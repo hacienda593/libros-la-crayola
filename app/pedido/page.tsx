@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
-import { BookOpen, ChevronLeft, Send } from "lucide-react";
+import { ChevronLeft, Send, AlertCircle } from "lucide-react";
 
 function generarCodigo() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -21,14 +21,15 @@ function PedidoInner() {
   const libroGrado   = params.get("libro_grado") ?? "";
   const libroPrec    = parseFloat(params.get("libro_precio") ?? "0");
 
-  const [nombreEst, setNombreEst]   = useState("");
-  const [nombrePad, setNombrePad]   = useState("");
-  const [telefono, setTelefono]     = useState("");
-  const [enviando, setEnviando]     = useState(false);
-  const [error, setError]           = useState("");
+  const [nombreEst, setNombreEst] = useState("");
+  const [nombrePad, setNombrePad] = useState("");
+  const [cedula, setCedula]       = useState("");
+  const [telefono, setTelefono]   = useState("");
+  const [enviando, setEnviando]   = useState(false);
+  const [error, setError]         = useState("");
 
   async function enviarPedido() {
-    if (!nombreEst.trim() || !nombrePad.trim() || !telefono.trim()) {
+    if (!nombreEst.trim() || !nombrePad.trim() || !cedula.trim() || !telefono.trim()) {
       setError("Por favor completa todos los campos.");
       return;
     }
@@ -36,30 +37,27 @@ function PedidoInner() {
     setEnviando(true);
 
     let codigo = generarCodigo();
-    // Asegurar unicidad
     for (let i = 0; i < 5; i++) {
       const { data } = await getSupabase()
-        .from("lb_pedidos")
-        .select("id")
-        .eq("codigo", codigo)
-        .maybeSingle();
+        .from("lb_pedidos").select("id").eq("codigo", codigo).maybeSingle();
       if (!data) break;
       codigo = generarCodigo();
     }
 
     const { error: err } = await getSupabase().from("lb_pedidos").insert({
       codigo,
-      nombre_est:   nombreEst.trim(),
-      nombre_pad:        nombrePad.trim(),
-      telefono:            telefono.trim(),
-      unidad_id: unidadId,
-      libro_id:            libroId,
-      cantidad:            1,
-      precio_unit:     libroPrec,
-      total:               libroPrec,
-      estado_pago:         "pendiente_pago",
-      estado_prov:    "pendiente_pedir",
-      punto_venta:         "web",
+      nombre_est:  nombreEst.trim(),
+      nombre_pad:  nombrePad.trim(),
+      cedula:      cedula.trim(),
+      telefono:    telefono.trim(),
+      unidad_id:   unidadId,
+      libro_id:    libroId,
+      cantidad:    1,
+      precio_unit: libroPrec,
+      total:       libroPrec,
+      estado_pago: "pendiente_pago",
+      estado_prov: "pendiente_pedir",
+      punto_venta: "web",
     });
 
     if (err) {
@@ -71,21 +69,27 @@ function PedidoInner() {
     router.push(`/confirmacion/${codigo}?precio=${libroPrec}&titulo=${encodeURIComponent(libroTitulo)}`);
   }
 
+  const inputCls = "w-full border-2 border-zinc-200 rounded-2xl px-4 py-3 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-black transition-colors";
+  const labelCls = "block text-xs font-black uppercase tracking-wider text-zinc-700 mb-1";
+
   return (
     <main className="min-h-screen bg-white px-4 py-8 max-w-lg mx-auto">
-      {/* Header */}
       <button onClick={() => router.back()}
-        className="flex items-center gap-1 text-xs font-black uppercase text-zinc-400 mb-6 hover:text-black transition-colors">
+        className="flex items-center gap-1 text-xs font-black uppercase text-zinc-500 mb-6 hover:text-black transition-colors">
         <ChevronLeft size={14}/> Volver
       </button>
 
-      <div className="flex items-center gap-3 mb-8">
-        <div className="w-12 h-12 bg-yellow-400 rounded-2xl flex items-center justify-center shadow-[4px_4px_0px_rgba(0,0,0,1)]">
-          <BookOpen size={24} className="text-black"/>
-        </div>
-        <div>
-          <h1 className="text-xl font-black uppercase tracking-tight text-zinc-900">Tu pedido</h1>
-          <p className="text-xs text-zinc-700 font-bold">Completa tus datos</p>
+      {/* Recordatorio transferencia */}
+      <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 mb-6">
+        <div className="flex items-start gap-2">
+          <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5"/>
+          <div>
+            <p className="text-xs font-black text-amber-700 uppercase tracking-widest mb-1">Recuerda transferir antes de continuar</p>
+            <p className="text-xs font-bold text-zinc-800 leading-relaxed">
+              Banco Pichincha · Cuenta de ahorros <strong>2204882211</strong><br/>
+              Titular: <strong>Liliana González</strong> · Monto: <strong>${libroPrec.toFixed(2)}</strong>
+            </p>
+          </div>
         </div>
       </div>
 
@@ -94,46 +98,36 @@ function PedidoInner() {
         <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1">Libro seleccionado</p>
         <p className="font-black text-sm text-zinc-900">{libroTitulo}</p>
         <p className="text-xs text-zinc-700 font-bold">{libroGrado} · {unidadNombre}</p>
-        <p className="font-black text-lg text-zinc-900 mt-2">${libroPrec.toFixed(2)}</p>
+        <p className="font-black text-lg text-zinc-900 mt-1">${libroPrec.toFixed(2)}</p>
       </div>
 
-      {/* Formulario */}
-      <div className="space-y-4 mb-6">
+      {/* Datos del estudiante */}
+      <p className="text-xs font-black text-zinc-500 uppercase tracking-widest mb-3">Datos del estudiante</p>
+      <div className="space-y-3 mb-5">
         <div>
-          <label className="block text-xs font-black uppercase tracking-wider text-zinc-500 mb-1">
-            Nombre del estudiante
-          </label>
-          <input
-            type="text"
-            value={nombreEst}
-            onChange={e => setNombreEst(e.target.value)}
-            placeholder="Ej: María García"
-            className="w-full border-2 border-zinc-200 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-black transition-colors"
-          />
+          <label className={labelCls}>Nombre completo del estudiante</label>
+          <input type="text" value={nombreEst} onChange={e => setNombreEst(e.target.value)}
+            placeholder="Ej: María García" className={inputCls}/>
+        </div>
+      </div>
+
+      {/* Datos del representante */}
+      <p className="text-xs font-black text-zinc-500 uppercase tracking-widest mb-3">Datos del representante (facturación)</p>
+      <div className="space-y-3 mb-6">
+        <div>
+          <label className={labelCls}>Nombre completo</label>
+          <input type="text" value={nombrePad} onChange={e => setNombrePad(e.target.value)}
+            placeholder="Ej: Juan García" className={inputCls}/>
         </div>
         <div>
-          <label className="block text-xs font-black uppercase tracking-wider text-zinc-500 mb-1">
-            Nombre del padre / representante
-          </label>
-          <input
-            type="text"
-            value={nombrePad}
-            onChange={e => setNombrePad(e.target.value)}
-            placeholder="Ej: Juan García"
-            className="w-full border-2 border-zinc-200 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-black transition-colors"
-          />
+          <label className={labelCls}>Cédula o RUC</label>
+          <input type="text" value={cedula} onChange={e => setCedula(e.target.value)}
+            placeholder="Ej: 1700000000" className={inputCls}/>
         </div>
         <div>
-          <label className="block text-xs font-black uppercase tracking-wider text-zinc-500 mb-1">
-            Teléfono / WhatsApp
-          </label>
-          <input
-            type="tel"
-            value={telefono}
-            onChange={e => setTelefono(e.target.value)}
-            placeholder="Ej: 0999123456"
-            className="w-full border-2 border-zinc-200 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-black transition-colors"
-          />
+          <label className={labelCls}>Teléfono / WhatsApp</label>
+          <input type="tel" value={telefono} onChange={e => setTelefono(e.target.value)}
+            placeholder="Ej: 0999123456" className={inputCls}/>
         </div>
       </div>
 
@@ -144,19 +138,9 @@ function PedidoInner() {
       )}
 
       <button onClick={enviarPedido} disabled={enviando}
-        className="w-full bg-black text-yellow-400 py-4 rounded-2xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-[4px_4px_0px_rgba(0,0,0,0.2)] disabled:opacity-50">
+        className="w-full bg-black text-yellow-400 py-4 rounded-2xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50">
         {enviando ? "Registrando..." : <><Send size={16}/> Registrar pedido</>}
       </button>
-
-      {/* Instrucciones pago */}
-      <div className="mt-6 bg-yellow-50 border-2 border-yellow-200 rounded-2xl p-4">
-        <p className="text-[10px] font-black text-yellow-600 uppercase tracking-widest mb-2">Cómo pagar</p>
-        <p className="text-xs font-bold text-zinc-600 leading-relaxed">
-          1. Registra tu pedido y obtén tu código<br/>
-          2. Realiza una transferencia por <strong>${libroPrec.toFixed(2)}</strong><br/>
-          3. Envía el comprobante por WhatsApp al negocio indicando tu código de pedido
-        </p>
-      </div>
     </main>
   );
 }

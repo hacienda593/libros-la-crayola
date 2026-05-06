@@ -162,11 +162,14 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-3 mb-4">
-              <p className="text-[10px] font-black text-yellow-700 uppercase tracking-widest mb-1">Pago por transferencia</p>
-              <p className="text-xs text-zinc-600 font-bold leading-relaxed">
-                Registra tu pedido → transfiere ${modal.precio.toFixed(2)} → envía el comprobante por WhatsApp con tu código
-              </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3 mb-4 text-left">
+              <p className="text-[10px] font-black text-blue-700 uppercase tracking-widest mb-2">Transfiere antes de continuar</p>
+              <div className="space-y-0.5">
+                <p className="text-xs font-black text-zinc-900">Banco Pichincha</p>
+                <p className="text-xs font-bold text-zinc-700">Cuenta de ahorros: <strong>2204882211</strong></p>
+                <p className="text-xs font-bold text-zinc-700">Titular: <strong>Liliana González</strong></p>
+                <p className="text-xs font-bold text-zinc-700">Monto: <strong>${modal.precio.toFixed(2)}</strong></p>
+              </div>
             </div>
 
             <button onClick={irAPedido}
