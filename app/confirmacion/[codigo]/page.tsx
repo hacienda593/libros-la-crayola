@@ -2,22 +2,38 @@
 export const dynamic = "force-dynamic";
 
 import { useParams, useSearchParams } from "next/navigation";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Share2 } from "lucide-react";
 import Link from "next/link";
 
 const NEGOCIO_WA = "593984341953";
 const LOGO_URL   = "https://hjdtjxxtqcrtbzftpqkn.supabase.co/storage/v1/object/public/logos-empresas/1717067647001.png";
+const URL_TIENDA = "https://libros-la-crayola.vercel.app";
 
 export default function ConfirmacionPage() {
-  const { codigo } = useParams<{ codigo: string }>();
-  const params     = useSearchParams();
-  const precio     = params.get("precio") ?? "";
-  const titulo     = params.get("titulo") ?? "";
+  const { codigo }    = useParams<{ codigo: string }>();
+  const params        = useSearchParams();
+  const precio        = params.get("precio") ?? "";
+  const titulo        = decodeURIComponent(params.get("titulo") ?? "");
+  const grado         = decodeURIComponent(params.get("grado") ?? "");
+  const comprador     = decodeURIComponent(params.get("comprador") ?? "");
+  const estudiante    = decodeURIComponent(params.get("estudiante") ?? "");
 
   const msgWA = encodeURIComponent(
-    `Hola La Crayola! Registré mi pedido de libro escolar.\n📚 Libro: ${titulo}\n💰 Valor: $${precio}\n🔑 Código de pedido: *${codigo}*\nAdjunto el comprobante de transferencia.`
+    `Hola La Crayola! 📚 Registré mi pedido de libro escolar.\n\n` +
+    `📖 Libro: ${titulo}\n` +
+    `🎓 Grado: ${grado}\n` +
+    `👤 Estudiante: ${estudiante}\n` +
+    `👤 Comprador: ${comprador}\n` +
+    `💰 Valor: $${precio}\n` +
+    `🔑 Código de pedido: *${codigo}*\n\n` +
+    `📎 Adjunto el comprobante de transferencia.`
   );
   const waUrl = `https://wa.me/${NEGOCIO_WA}?text=${msgWA}`;
+
+  const msgCompartir = encodeURIComponent(
+    `Hola! Puedes pedir los libros escolares de La Crayola aquí: ${URL_TIENDA}`
+  );
+  const waCompartir = `https://wa.me/?text=${msgCompartir}`;
 
   return (
     <main className="min-h-screen bg-white flex flex-col items-center justify-center px-6 text-center py-10">
@@ -31,30 +47,19 @@ export default function ConfirmacionPage() {
 
       <h1 className="text-2xl font-black uppercase tracking-tight mb-1 text-zinc-900">¡Pedido registrado!</h1>
       <p className="text-zinc-700 text-sm font-bold max-w-xs mb-6">
-        Transfiere y envía tu comprobante por WhatsApp con el código de abajo
+        Envía tu comprobante por WhatsApp con el código de abajo
       </p>
 
       {/* Código */}
       <div className="bg-black text-yellow-400 rounded-3xl px-12 py-6 mb-6 shadow-[6px_6px_0px_rgba(0,0,0,0.2)]">
         <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Código de pedido</p>
         <p className="text-6xl font-black tracking-widest">{codigo}</p>
-        <p className="text-xs font-black text-zinc-400 mt-2">${precio} · {decodeURIComponent(titulo)}</p>
+        <p className="text-xs font-black text-zinc-400 mt-2">${precio} · {titulo} · {grado}</p>
       </div>
 
       <div className="space-y-3 w-full max-w-xs">
 
-        {/* Datos bancarios */}
-        <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 text-left">
-          <p className="text-[10px] font-black text-blue-700 uppercase tracking-widest mb-2">Cuenta para transferencia</p>
-          <div className="space-y-1">
-            <p className="text-sm font-black text-zinc-900">Banco Pichincha</p>
-            <p className="text-xs font-bold text-zinc-700">Cuenta de ahorros: <strong>2204882211</strong></p>
-            <p className="text-xs font-bold text-zinc-700">Titular: <strong>Liliana González</strong></p>
-            <p className="text-xs font-bold text-zinc-700">Monto: <strong>${precio}</strong></p>
-          </div>
-        </div>
-
-        {/* Botón WhatsApp */}
+        {/* Botón WhatsApp principal */}
         <a href={waUrl} target="_blank" rel="noopener noreferrer"
           className="flex items-center justify-center gap-3 w-full bg-[#25D366] text-white py-4 rounded-2xl font-black text-sm uppercase tracking-wider shadow-[4px_4px_0px_rgba(0,0,0,0.15)]">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="white">
@@ -63,20 +68,36 @@ export default function ConfirmacionPage() {
           Enviar comprobante por WhatsApp
         </a>
 
+        {/* Próximos pasos */}
         <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-4 text-left">
           <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-2">Próximos pasos</p>
-          <p className="text-xs text-zinc-700 font-bold leading-relaxed">
-            1. Transfiere <strong>${precio}</strong> a la cuenta de arriba<br/>
-            2. Envía el comprobante por WhatsApp con tu código <strong>{codigo}</strong><br/>
-            3. Verificamos y confirmamos tu pedido<br/>
-            4. Te avisamos cuando el libro esté listo para retirar
-          </p>
+          <ol className="space-y-1.5">
+            {[
+              "Recuerda que previo a continuar ya debes haber realizado el pago.",
+              "Envía tu pedido por WhatsApp con los datos del mismo dando clic en el botón de arriba.",
+              "No olvides adjuntar el comprobante de pago al mensaje.",
+              "Puedes seguir comprando libros si lo necesitas, o compartir la página con otro padre.",
+              "Cuando tu libro esté en nuestra tienda te avisamos para coordinar la entrega.",
+            ].map((paso, i) => (
+              <li key={i} className="flex gap-2 text-xs text-zinc-700 font-bold leading-snug">
+                <span className="w-4 h-4 bg-black text-yellow-400 rounded-full text-[9px] font-black flex items-center justify-center shrink-0 mt-0.5">{i+1}</span>
+                {paso}
+              </li>
+            ))}
+          </ol>
         </div>
 
+        {/* Comprar otro libro */}
         <Link href="/"
-          className="flex items-center justify-center gap-2 w-full border-2 border-black py-3 rounded-2xl text-sm font-black uppercase tracking-wider text-zinc-900 hover:bg-black hover:text-white transition-colors">
-          Registrar otro libro
+          className="flex items-center justify-center gap-2 w-full bg-black text-yellow-400 py-3 rounded-2xl text-sm font-black uppercase tracking-wider">
+          Comprar otro libro
         </Link>
+
+        {/* Compartir página */}
+        <a href={waCompartir} target="_blank" rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 w-full border-2 border-zinc-300 py-3 rounded-2xl text-sm font-black uppercase tracking-wider text-zinc-700 hover:border-black transition-colors">
+          <Share2 size={14}/> Compartir página a otro padre
+        </a>
       </div>
     </main>
   );

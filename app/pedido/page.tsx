@@ -66,7 +66,7 @@ function PedidoInner() {
       return;
     }
 
-    router.push(`/confirmacion/${codigo}?precio=${libroPrec}&titulo=${encodeURIComponent(libroTitulo)}`);
+    router.push(`/confirmacion/${codigo}?precio=${libroPrec}&titulo=${encodeURIComponent(libroTitulo)}&grado=${encodeURIComponent(libroGrado)}&comprador=${encodeURIComponent(nombrePad.trim())}&estudiante=${encodeURIComponent(nombreEst.trim())}`);
   }
 
   const inputCls = "w-full border-2 border-zinc-200 rounded-2xl px-4 py-3 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-black transition-colors";
