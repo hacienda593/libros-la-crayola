@@ -31,9 +31,8 @@ export default function ConfirmacionPage() {
   const waUrl = `https://wa.me/${NEGOCIO_WA}?text=${msgWA}`;
 
   const msgCompartir = encodeURIComponent(
-    `📚 ¡Hola! Te comparto el link para pedir los libros de inglés *My English Workbook* de La Crayola.\n\n` +
-    `✅ Puedes escoger el libro de tu hijo, registrar tu pedido y pagar por transferencia desde aquí:\n${URL_TIENDA}\n\n` +
-    `📞 Cualquier consulta al negocio por este mismo WhatsApp.`
+    `📚 ¡Hola! Te comparto el link para pedir los libros de inglés *My English Workbook* disponibles en La Crayola.\n\n` +
+    `✅ Puedes escoger el libro de tu hijo, registrar tu pedido y pagar por transferencia desde aquí:\n${URL_TIENDA}`
   );
   const waCompartir = `https://wa.me/?text=${msgCompartir}`;
 
