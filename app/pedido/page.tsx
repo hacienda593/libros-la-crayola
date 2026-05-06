@@ -32,6 +32,16 @@ function PedidoInner() {
       setError("Por favor completa todos los campos.");
       return;
     }
+    const soloDigitosCed = cedula.replace(/\D/g, "");
+    if (soloDigitosCed.length !== 10 && soloDigitosCed.length !== 13) {
+      setError("La cédula debe tener 10 dígitos o el RUC 13 dígitos.");
+      return;
+    }
+    const soloDigitosTel = telefono.replace(/\D/g, "");
+    if (soloDigitosTel.length !== 10) {
+      setError("El teléfono debe tener 10 dígitos (Ej: 0999123456).");
+      return;
+    }
     setError("");
     setEnviando(true);
 
