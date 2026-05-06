@@ -19,20 +19,20 @@ export default function ConfirmacionPage() {
   const estudiante    = decodeURIComponent(params.get("estudiante") ?? "");
 
   const msgWA = encodeURIComponent(
-    `Hola La Crayola! 📚 Registré mi pedido de libro escolar.\n\n` +
-    `📖 Libro: ${titulo}\n` +
-    `🎓 Grado: ${grado}\n` +
-    `👤 Estudiante: ${estudiante}\n` +
-    `👤 Comprador: ${comprador}\n` +
-    `💰 Valor: $${precio}\n` +
-    `🔑 Código de pedido: *${codigo}*\n\n` +
-    `📎 Adjunto el comprobante de transferencia.`
+    `Hola La Crayola! Registre mi pedido de libro escolar.\n\n` +
+    `Libro: ${titulo}\n` +
+    `Grado: ${grado}\n` +
+    `Estudiante: ${estudiante}\n` +
+    `Comprador: ${comprador}\n` +
+    `Valor: $${precio}\n` +
+    `Codigo de pedido: *${codigo}*\n\n` +
+    `Adjunto el comprobante de transferencia.`
   );
   const waUrl = `https://wa.me/${NEGOCIO_WA}?text=${msgWA}`;
 
   const msgCompartir = encodeURIComponent(
-    `📚 ¡Hola! Te comparto el link para pedir los libros de inglés *My English Workbook* disponibles en La Crayola.\n\n` +
-    `✅ Puedes escoger el libro de tu hijo, registrar tu pedido y pagar por transferencia desde aquí:\n${URL_TIENDA}`
+    `Hola! Te comparto el link para pedir los libros de ingles *My English Workbook* disponibles en La Crayola.\n\n` +
+    `Puedes escoger el libro de tu hijo, registrar tu pedido y pagar por transferencia desde aqui:\n${URL_TIENDA}`
   );
   const waCompartir = `https://wa.me/?text=${msgCompartir}`;
 
