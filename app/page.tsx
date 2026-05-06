@@ -145,7 +145,7 @@ export default function HomePage() {
       {/* Modal confirmación */}
       {modal && (
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0">
-          <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl">
+          <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl mb-16">
             <div className="flex items-start justify-between mb-4">
               <p className="font-black text-sm uppercase tracking-wide text-zinc-900">Confirmar pedido</p>
               <button onClick={() => setModal(null)} className="text-zinc-400 hover:text-black transition-colors">
