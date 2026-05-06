@@ -1,101 +1,155 @@
-import Image from "next/image";
+"use client";
+export const dynamic = "force-dynamic";
 
-export default function Home() {
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getSupabase } from "@/lib/supabase";
+import { BookOpen, ChevronRight, School } from "lucide-react";
+
+type Unidad = { id: string; nombre: string };
+type Libro  = {
+  id: string; titulo: string; materia: string;
+  grado: string; precio: number; imagen_url: string | null;
+};
+
+export default function HomePage() {
+  const router = useRouter();
+  const [unidades, setUnidades]             = useState<Unidad[]>([]);
+  const [unidadSel, setUnidadSel]           = useState<Unidad | null>(null);
+  const [libros, setLibros]                 = useState<Libro[]>([]);
+  const [libroSel, setLibroSel]             = useState<Libro | null>(null);
+  const [cargando, setCargando]             = useState(true);
+  const [cargandoLibros, setCargandoLibros] = useState(false);
+
+  useEffect(() => {
+    getSupabase()
+      .from("unidades_educativas")
+      .select("id, nombre")
+      .eq("activo", true)
+      .order("nombre")
+      .then(({ data }) => { setUnidades(data ?? []); setCargando(false); });
+  }, []);
+
+  async function seleccionarUnidad(u: Unidad) {
+    setUnidadSel(u);
+    setLibroSel(null);
+    setCargandoLibros(true);
+    const { data } = await getSupabase()
+      .from("libros")
+      .select("id, titulo, materia, grado, precio, imagen_url")
+      .eq("unidad_educativa_id", u.id)
+      .eq("activo", true)
+      .order("grado")
+      .order("materia");
+    setLibros(data ?? []);
+    setCargandoLibros(false);
+  }
+
+  function continuar() {
+    if (!unidadSel || !libroSel) return;
+    const params = new URLSearchParams({
+      unidad_id:     unidadSel.id,
+      unidad_nombre: unidadSel.nombre,
+      libro_id:      libroSel.id,
+      libro_titulo:  libroSel.titulo,
+      libro_grado:   libroSel.grado,
+      libro_precio:  String(libroSel.precio),
+    });
+    router.push(`/pedido?${params}`);
+  }
+
+  if (cargando) return (
+    <main className="min-h-screen bg-white flex items-center justify-center">
+      <div className="w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"/>
+    </main>
+  );
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <main className="min-h-screen bg-white px-4 py-8 max-w-lg mx-auto">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-8">
+        <div className="w-12 h-12 bg-yellow-400 rounded-2xl flex items-center justify-center shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+          <BookOpen size={24} className="text-black"/>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        <div>
+          <h1 className="text-xl font-black uppercase tracking-tight">La Crayola</h1>
+          <p className="text-xs text-zinc-500 font-bold">Preventa de Libros Escolares</p>
+        </div>
+      </div>
+
+      {/* Paso 1: Unidad educativa */}
+      <section className="mb-8">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-6 h-6 bg-black text-yellow-400 rounded-full text-xs font-black flex items-center justify-center">1</span>
+          <h2 className="font-black uppercase text-sm tracking-wide">Selecciona tu unidad educativa</h2>
+        </div>
+        <div className="space-y-2">
+          {unidades.map(u => (
+            <button key={u.id} onClick={() => seleccionarUnidad(u)}
+              className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all
+                ${unidadSel?.id === u.id
+                  ? "border-black bg-yellow-400 shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+                  : "border-zinc-200 hover:border-black"}`}>
+              <School size={18} className="shrink-0"/>
+              <span className="font-bold text-sm">{u.nombre}</span>
+            </button>
+          ))}
+          {unidades.length === 0 && (
+            <p className="text-sm text-zinc-400 font-bold text-center py-4">No hay unidades educativas disponibles.</p>
+          )}
+        </div>
+      </section>
+
+      {/* Paso 2: Libro */}
+      {unidadSel && (
+        <section className="mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-6 h-6 bg-black text-yellow-400 rounded-full text-xs font-black flex items-center justify-center">2</span>
+            <h2 className="font-black uppercase text-sm tracking-wide">Selecciona el libro</h2>
+          </div>
+
+          {cargandoLibros ? (
+            <div className="flex justify-center py-8">
+              <div className="w-6 h-6 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"/>
+            </div>
+          ) : libros.length === 0 ? (
+            <p className="text-sm text-zinc-400 font-bold text-center py-4">No hay libros disponibles para esta unidad.</p>
+          ) : (
+            <div className="space-y-2">
+              {libros.map(l => (
+                <button key={l.id} onClick={() => setLibroSel(l)}
+                  className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all
+                    ${libroSel?.id === l.id
+                      ? "border-black bg-yellow-400 shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+                      : "border-zinc-200 hover:border-black"}`}>
+                  {l.imagen_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={l.imagen_url} alt={l.titulo}
+                      className="w-12 h-16 object-cover rounded-lg shrink-0 border border-zinc-200"/>
+                  ) : (
+                    <div className="w-12 h-16 bg-zinc-100 rounded-lg shrink-0 flex items-center justify-center">
+                      <BookOpen size={20} className="text-zinc-300"/>
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-sm leading-tight">{l.titulo}</p>
+                    <p className="text-xs text-zinc-500 font-bold mt-1">{l.materia} · {l.grado}</p>
+                  </div>
+                  <p className="font-black text-sm shrink-0">${l.precio.toFixed(2)}</p>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Botón continuar */}
+      {libroSel && (
+        <button onClick={continuar}
+          className="w-full bg-black text-yellow-400 py-4 rounded-2xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-[4px_4px_0px_rgba(0,0,0,0.2)]">
+          Continuar <ChevronRight size={18}/>
+        </button>
+      )}
+    </main>
   );
 }
