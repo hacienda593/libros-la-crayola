@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import WaFloat from "@/components/WaFloat";
 
 export const metadata: Metadata = {
   title: "La Crayola · Libros Escolares",
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">{children}<WaFloat/></body>
     </html>
   );
 }
