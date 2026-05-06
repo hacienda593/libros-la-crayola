@@ -16,13 +16,11 @@ export default function ConfirmacionPage() {
   const titulo        = decodeURIComponent(params.get("titulo") ?? "");
   const grado         = decodeURIComponent(params.get("grado") ?? "");
   const comprador     = decodeURIComponent(params.get("comprador") ?? "");
-  const estudiante    = decodeURIComponent(params.get("estudiante") ?? "");
 
   const msgWA = encodeURIComponent(
     `Hola La Crayola! Registre mi pedido de libro escolar.\n\n` +
     `Libro: ${titulo}\n` +
     `Grado: ${grado}\n` +
-    `Estudiante: ${estudiante}\n` +
     `Comprador: ${comprador}\n` +
     `Valor: $${precio}\n` +
     `Codigo de pedido: *${codigo}*\n\n` +

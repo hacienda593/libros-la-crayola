@@ -21,7 +21,6 @@ function PedidoInner() {
   const libroGrado   = params.get("libro_grado") ?? "";
   const libroPrec    = parseFloat(params.get("libro_precio") ?? "0");
 
-  const [nombreEst, setNombreEst] = useState("");
   const [nombrePad, setNombrePad] = useState("");
   const [cedula, setCedula]       = useState("");
   const [telefono, setTelefono]   = useState("");
@@ -29,7 +28,7 @@ function PedidoInner() {
   const [error, setError]         = useState("");
 
   async function enviarPedido() {
-    if (!nombreEst.trim() || !nombrePad.trim() || !cedula.trim() || !telefono.trim()) {
+    if (!nombrePad.trim() || !cedula.trim() || !telefono.trim()) {
       setError("Por favor completa todos los campos.");
       return;
     }
@@ -46,7 +45,7 @@ function PedidoInner() {
 
     const { error: err } = await getSupabase().from("lb_pedidos").insert({
       codigo,
-      nombre_est:  nombreEst.trim(),
+      nombre_est:  "",
       nombre_pad:  nombrePad.trim(),
       cedula:      cedula.trim(),
       telefono:    telefono.trim(),
@@ -66,7 +65,7 @@ function PedidoInner() {
       return;
     }
 
-    router.push(`/confirmacion/${codigo}?precio=${libroPrec}&titulo=${encodeURIComponent(libroTitulo)}&grado=${encodeURIComponent(libroGrado)}&comprador=${encodeURIComponent(nombrePad.trim())}&estudiante=${encodeURIComponent(nombreEst.trim())}`);
+    router.push(`/confirmacion/${codigo}?precio=${libroPrec}&titulo=${encodeURIComponent(libroTitulo)}&grado=${encodeURIComponent(libroGrado)}&comprador=${encodeURIComponent(nombrePad.trim())}`);
   }
 
   const inputCls = "w-full border-2 border-zinc-200 rounded-2xl px-4 py-3 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-black transition-colors";
@@ -99,16 +98,6 @@ function PedidoInner() {
         <p className="font-black text-sm text-zinc-900">{libroTitulo}</p>
         <p className="text-xs text-zinc-700 font-bold">{libroGrado} · {unidadNombre}</p>
         <p className="font-black text-lg text-zinc-900 mt-1">${libroPrec.toFixed(2)}</p>
-      </div>
-
-      {/* Datos del estudiante */}
-      <p className="text-xs font-black text-zinc-500 uppercase tracking-widest mb-3">Datos del estudiante</p>
-      <div className="space-y-3 mb-5">
-        <div>
-          <label className={labelCls}>Nombre completo del estudiante</label>
-          <input type="text" value={nombreEst} onChange={e => setNombreEst(e.target.value)}
-            placeholder="Ej: María García" className={inputCls}/>
-        </div>
       </div>
 
       {/* Datos del representante */}
