@@ -139,7 +139,7 @@ export default function HomePage() {
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0">
           <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl">
             <div className="flex items-start justify-between mb-4">
-              <p className="font-black text-sm uppercase tracking-wide">Confirmar pedido</p>
+              <p className="font-black text-sm uppercase tracking-wide text-zinc-900">Confirmar pedido</p>
               <button onClick={() => setModal(null)} className="text-zinc-400 hover:text-black transition-colors">
                 <X size={18}/>
               </button>
@@ -155,10 +155,10 @@ export default function HomePage() {
                 </div>
               )}
               <div>
-                <p className="font-black text-sm leading-tight">{modal.titulo}</p>
-                <p className="text-xs text-zinc-400 font-bold mt-1">{modal.grado}</p>
-                <p className="text-xs text-zinc-400 font-bold">{unidadNombre(modal.unidad_id)}</p>
-                <p className="font-black text-xl mt-2">${modal.precio.toFixed(2)}</p>
+                <p className="font-black text-sm leading-tight text-zinc-900">{modal.titulo}</p>
+                <p className="text-xs text-zinc-700 font-bold mt-1">{modal.grado}</p>
+                <p className="text-xs text-zinc-700 font-bold">{unidadNombre(modal.unidad_id)}</p>
+                <p className="font-black text-xl mt-2 text-zinc-900">${modal.precio.toFixed(2)}</p>
               </div>
             </div>
 

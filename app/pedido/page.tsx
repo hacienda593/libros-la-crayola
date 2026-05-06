@@ -84,17 +84,17 @@ function PedidoInner() {
           <BookOpen size={24} className="text-black"/>
         </div>
         <div>
-          <h1 className="text-xl font-black uppercase tracking-tight">Tu pedido</h1>
-          <p className="text-xs text-zinc-500 font-bold">Completa tus datos</p>
+          <h1 className="text-xl font-black uppercase tracking-tight text-zinc-900">Tu pedido</h1>
+          <p className="text-xs text-zinc-700 font-bold">Completa tus datos</p>
         </div>
       </div>
 
       {/* Resumen libro */}
       <div className="bg-zinc-50 border-2 border-zinc-200 rounded-2xl p-4 mb-6">
-        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Libro seleccionado</p>
-        <p className="font-black text-sm">{libroTitulo}</p>
-        <p className="text-xs text-zinc-500 font-bold">{libroGrado} · {unidadNombre}</p>
-        <p className="font-black text-lg mt-2">${libroPrec.toFixed(2)}</p>
+        <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1">Libro seleccionado</p>
+        <p className="font-black text-sm text-zinc-900">{libroTitulo}</p>
+        <p className="text-xs text-zinc-700 font-bold">{libroGrado} · {unidadNombre}</p>
+        <p className="font-black text-lg text-zinc-900 mt-2">${libroPrec.toFixed(2)}</p>
       </div>
 
       {/* Formulario */}
