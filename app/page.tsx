@@ -98,6 +98,14 @@ export default function HomePage() {
           </div>
         )}
 
+        {/* Aviso preventa */}
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 mb-5 flex gap-3 items-start">
+          <span className="text-amber-500 text-lg shrink-0">ℹ️</span>
+          <p className="text-xs text-zinc-700 font-bold leading-relaxed">
+            <span className="font-black text-zinc-900">Sistema de preventa.</span> Los libros se adquieren exclusivamente bajo pedido. Una vez confirmado tu pago, realizamos el pedido al proveedor y te notificamos en cuanto el libro esté disponible en nuestra tienda para coordinar la entrega.
+          </p>
+        </div>
+
         {/* Grid de libros */}
         {librosFiltrados.length === 0 ? (
           <p className="text-center text-zinc-400 font-bold py-12">No hay libros disponibles.</p>
