@@ -118,10 +118,10 @@ export default function HomePage() {
                 </div>
                 {/* Info */}
                 <div className="p-3 flex flex-col flex-1">
-                  <p className="font-black text-xs leading-tight mb-0.5">{l.titulo}</p>
-                  <p className="text-[10px] text-zinc-400 font-bold mb-2">{l.grado}</p>
+                  <p className="font-black text-xs leading-tight mb-0.5 text-zinc-900">{l.titulo}</p>
+                  <p className="text-[10px] text-zinc-600 font-bold mb-2">{l.grado}</p>
                   <div className="mt-auto flex items-center justify-between">
-                    <p className="font-black text-base">${l.precio.toFixed(2)}</p>
+                    <p className="font-black text-base text-zinc-900">${l.precio.toFixed(2)}</p>
                     <button onClick={() => comprar(l)}
                       className="bg-black text-yellow-400 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase flex items-center gap-1 hover:bg-zinc-800 transition-colors">
                       <ShoppingCart size={10}/> Comprar
