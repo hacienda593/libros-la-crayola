@@ -23,7 +23,7 @@ export default function HomePage() {
 
   useEffect(() => {
     getSupabase()
-      .from("unidades_educativas")
+      .from("lb_unidades")
       .select("id, nombre")
       .eq("activo", true)
       .order("nombre")
@@ -35,9 +35,9 @@ export default function HomePage() {
     setLibroSel(null);
     setCargandoLibros(true);
     const { data } = await getSupabase()
-      .from("libros")
+      .from("lb_libros")
       .select("id, titulo, materia, grado, precio, imagen_url")
-      .eq("unidad_educativa_id", u.id)
+      .eq("unidad_id", u.id)
       .eq("activo", true)
       .order("grado")
       .order("materia");

@@ -11,12 +11,12 @@ const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "crayola2025";
 
 type Pedido = {
   id: string; codigo: string;
-  nombre_estudiante: string; nombre_padre: string; telefono: string;
+  nombre_est: string; nombre_pad: string; telefono: string;
   libro: { titulo: string; grado: string; precio: number } | null;
   unidad: { nombre: string } | null;
   cantidad: number; total: number;
-  estado_pago: string; estado_proveedor: string;
-  comprobante_numero: string | null; comprobante_monto: number | null;
+  estado_pago: string; estado_prov: string;
+  comp_numero: string | null; comp_monto: number | null;
   created_at: string;
 };
 
@@ -77,12 +77,12 @@ export default function AdminPage() {
   async function cargarPedidos() {
     setCargando(true);
     const { data } = await getSupabase()
-      .from("pedidos_libros")
-      .select(`id, codigo, nombre_estudiante, nombre_padre, telefono,
-               cantidad, total, estado_pago, estado_proveedor,
-               comprobante_numero, comprobante_monto, created_at,
-               libro:libros(titulo, grado, precio),
-               unidad:unidades_educativas(nombre)`)
+      .from("lb_pedidos")
+      .select(`id, codigo, nombre_est, nombre_pad, telefono,
+               cantidad, total, estado_pago, estado_prov,
+               comp_numero, comp_monto, created_at,
+               libro:lb_libros(titulo, grado, precio),
+               unidad:lb_unidades(nombre)`)
       .order("created_at", { ascending: false });
     setPedidos((data as unknown as Pedido[]) ?? []);
     calcularResumen((data as unknown as Pedido[]) ?? []);
@@ -99,9 +99,9 @@ export default function AdminPage() {
         pagados: 0, pendiente_pedir: 0, pedidos_prov: 0, entregados: 0,
       };
       if (p.estado_pago === "pagado") map[key].pagados++;
-      if (p.estado_proveedor === "pendiente_pedir" && p.estado_pago === "pagado") map[key].pendiente_pedir++;
-      if (p.estado_proveedor === "pedido") map[key].pedidos_prov++;
-      if (p.estado_proveedor === "entregado") map[key].entregados++;
+      if (p.estado_prov === "pendiente_pedir" && p.estado_pago === "pagado") map[key].pendiente_pedir++;
+      if (p.estado_prov === "pedido") map[key].pedidos_prov++;
+      if (p.estado_prov === "entregado") map[key].entregados++;
     });
     setResumen(Object.values(map));
   }
@@ -119,7 +119,7 @@ export default function AdminPage() {
 
     // Ver si el comprobante ya existe
     const { data: compExistente } = await getSupabase()
-      .from("comprobantes")
+      .from("lb_comprobantes")
       .select("*")
       .eq("numero", compNumero.trim())
       .maybeSingle();
@@ -136,11 +136,11 @@ export default function AdminPage() {
 
     // Registrar o actualizar comprobante
     if (compExistente) {
-      await getSupabase().from("comprobantes").update({
+      await getSupabase().from("lb_comprobantes").update({
         monto_usado: montoUsadoPrevio + pedido.total,
       }).eq("numero", compNumero.trim());
     } else {
-      await getSupabase().from("comprobantes").insert({
+      await getSupabase().from("lb_comprobantes").insert({
         numero:      compNumero.trim(),
         monto_total: monto,
         monto_usado: pedido.total,
@@ -148,10 +148,10 @@ export default function AdminPage() {
     }
 
     // Actualizar pedido
-    await getSupabase().from("pedidos_libros").update({
+    await getSupabase().from("lb_pedidos").update({
       estado_pago:        "pagado",
-      comprobante_numero: compNumero.trim(),
-      comprobante_monto:  monto,
+      comp_numero: compNumero.trim(),
+      comp_monto:  monto,
     }).eq("id", pedido.id);
 
     setMsgComp("✓ Pago verificado correctamente.");
@@ -162,8 +162,8 @@ export default function AdminPage() {
   }
 
   async function actualizarEstadoProv(pedidoId: string, estado: string) {
-    await getSupabase().from("pedidos_libros")
-      .update({ estado_proveedor: estado })
+    await getSupabase().from("lb_pedidos")
+      .update({ estado_prov: estado })
       .eq("id", pedidoId);
     cargarPedidos();
   }
@@ -171,11 +171,11 @@ export default function AdminPage() {
   const pedidosFiltrados = pedidos.filter(p => {
     const q = busqueda.toLowerCase();
     const matchBusq = !q || p.codigo.toLowerCase().includes(q)
-      || p.nombre_estudiante.toLowerCase().includes(q)
-      || p.nombre_padre.toLowerCase().includes(q)
+      || p.nombre_est.toLowerCase().includes(q)
+      || p.nombre_pad.toLowerCase().includes(q)
       || p.telefono.includes(q);
     const matchPago = filtroPago === "todos" || p.estado_pago === filtroPago;
-    const matchProv = filtroProv === "todos" || p.estado_proveedor === filtroProv;
+    const matchProv = filtroProv === "todos" || p.estado_prov === filtroProv;
     return matchBusq && matchPago && matchProv;
   });
 
@@ -309,10 +309,10 @@ export default function AdminPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-black text-sm">{p.codigo}</span>
                         <span className={badgePago(p.estado_pago)}>{ESTADO_PAGO_LABEL[p.estado_pago]}</span>
-                        <span className={badgeProv(p.estado_proveedor)}>{ESTADO_PROV_LABEL[p.estado_proveedor]}</span>
+                        <span className={badgeProv(p.estado_prov)}>{ESTADO_PROV_LABEL[p.estado_prov]}</span>
                       </div>
                       <p className="text-xs text-zinc-500 font-bold truncate mt-0.5">
-                        {p.nombre_estudiante} · {p.libro?.titulo}
+                        {p.nombre_est} · {p.libro?.titulo}
                       </p>
                     </div>
                     <span className="font-black text-sm shrink-0">${p.total.toFixed(2)}</span>
@@ -326,11 +326,11 @@ export default function AdminPage() {
                       <div className="grid grid-cols-2 gap-3 text-xs">
                         <div>
                           <p className="text-zinc-400 font-black uppercase tracking-widest text-[9px]">Estudiante</p>
-                          <p className="font-bold">{p.nombre_estudiante}</p>
+                          <p className="font-bold">{p.nombre_est}</p>
                         </div>
                         <div>
                           <p className="text-zinc-400 font-black uppercase tracking-widest text-[9px]">Representante</p>
-                          <p className="font-bold">{p.nombre_padre}</p>
+                          <p className="font-bold">{p.nombre_pad}</p>
                         </div>
                         <div>
                           <p className="text-zinc-400 font-black uppercase tracking-widest text-[9px]">Teléfono</p>
@@ -349,10 +349,10 @@ export default function AdminPage() {
                           <p className="text-zinc-400 font-black uppercase tracking-widest text-[9px]">Grado</p>
                           <p className="font-bold">{p.libro?.grado}</p>
                         </div>
-                        {p.comprobante_numero && (
+                        {p.comp_numero && (
                           <div>
                             <p className="text-zinc-400 font-black uppercase tracking-widest text-[9px]">Comprobante</p>
-                            <p className="font-bold">{p.comprobante_numero} · ${p.comprobante_monto?.toFixed(2)}</p>
+                            <p className="font-bold">{p.comp_numero} · ${p.comp_monto?.toFixed(2)}</p>
                           </div>
                         )}
                       </div>
@@ -384,7 +384,7 @@ export default function AdminPage() {
                           {["pendiente_pedir","pedido","recibido","entregado"].map(est => (
                             <button key={est} onClick={() => actualizarEstadoProv(p.id, est)}
                               className={`py-2 rounded-xl text-[10px] font-black uppercase transition-all border-2
-                                ${p.estado_proveedor === est
+                                ${p.estado_prov === est
                                   ? "bg-black text-yellow-400 border-black"
                                   : "border-zinc-200 text-zinc-500 hover:border-black"}`}>
                               {ESTADO_PROV_LABEL[est]}

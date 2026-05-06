@@ -39,7 +39,7 @@ function PedidoInner() {
     // Asegurar unicidad
     for (let i = 0; i < 5; i++) {
       const { data } = await getSupabase()
-        .from("pedidos_libros")
+        .from("lb_pedidos")
         .select("id")
         .eq("codigo", codigo)
         .maybeSingle();
@@ -47,18 +47,18 @@ function PedidoInner() {
       codigo = generarCodigo();
     }
 
-    const { error: err } = await getSupabase().from("pedidos_libros").insert({
+    const { error: err } = await getSupabase().from("lb_pedidos").insert({
       codigo,
-      nombre_estudiante:   nombreEst.trim(),
-      nombre_padre:        nombrePad.trim(),
+      nombre_est:   nombreEst.trim(),
+      nombre_pad:        nombrePad.trim(),
       telefono:            telefono.trim(),
-      unidad_educativa_id: unidadId,
+      unidad_id: unidadId,
       libro_id:            libroId,
       cantidad:            1,
-      precio_unitario:     libroPrec,
+      precio_unit:     libroPrec,
       total:               libroPrec,
       estado_pago:         "pendiente_pago",
-      estado_proveedor:    "pendiente_pedir",
+      estado_prov:    "pendiente_pedir",
       punto_venta:         "web",
     });
 
