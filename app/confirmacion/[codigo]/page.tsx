@@ -6,6 +6,7 @@ import { CheckCircle } from "lucide-react";
 import Link from "next/link";
 
 const NEGOCIO_WA = "593984341953";
+const LOGO_URL   = "https://hjdtjxxtqcrtbzftpqkn.supabase.co/storage/v1/object/public/logos-empresas/1717067647001.png";
 
 export default function ConfirmacionPage() {
   const { codigo } = useParams<{ codigo: string }>();
@@ -19,24 +20,40 @@ export default function ConfirmacionPage() {
   const waUrl = `https://wa.me/${NEGOCIO_WA}?text=${msgWA}`;
 
   return (
-    <main className="min-h-screen bg-white flex flex-col items-center justify-center px-6 text-center">
-      <div className="w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center mb-6 shadow-[6px_6px_0px_rgba(0,0,0,1)]">
-        <CheckCircle size={40} className="text-black" fill="black"/>
+    <main className="min-h-screen bg-white flex flex-col items-center justify-center px-6 text-center py-10">
+      {/* Logo */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={LOGO_URL} alt="La Crayola" className="h-16 object-contain mb-4"/>
+
+      <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center mb-4 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+        <CheckCircle size={32} className="text-black" fill="black"/>
       </div>
 
-      <h1 className="text-2xl font-black uppercase tracking-tight mb-2">¡Pedido registrado!</h1>
-      <p className="text-zinc-500 text-sm font-bold max-w-xs mb-8">
-        Ahora envía tu comprobante de transferencia por WhatsApp con este código
+      <h1 className="text-2xl font-black uppercase tracking-tight mb-1 text-zinc-900">¡Pedido registrado!</h1>
+      <p className="text-zinc-700 text-sm font-bold max-w-xs mb-6">
+        Transfiere y envía tu comprobante por WhatsApp con el código de abajo
       </p>
 
       {/* Código */}
-      <div className="bg-black text-yellow-400 rounded-3xl px-12 py-8 mb-8 shadow-[8px_8px_0px_rgba(0,0,0,0.2)]">
-        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Código de pedido</p>
+      <div className="bg-black text-yellow-400 rounded-3xl px-12 py-6 mb-6 shadow-[6px_6px_0px_rgba(0,0,0,0.2)]">
+        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Código de pedido</p>
         <p className="text-6xl font-black tracking-widest">{codigo}</p>
-        <p className="text-xs font-black text-zinc-500 mt-3">${precio} · {decodeURIComponent(titulo)}</p>
+        <p className="text-xs font-black text-zinc-400 mt-2">${precio} · {decodeURIComponent(titulo)}</p>
       </div>
 
       <div className="space-y-3 w-full max-w-xs">
+
+        {/* Datos bancarios */}
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 text-left">
+          <p className="text-[10px] font-black text-blue-700 uppercase tracking-widest mb-2">Cuenta para transferencia</p>
+          <div className="space-y-1">
+            <p className="text-sm font-black text-zinc-900">Banco Pichincha</p>
+            <p className="text-xs font-bold text-zinc-700">Cuenta de ahorros: <strong>2204882211</strong></p>
+            <p className="text-xs font-bold text-zinc-700">Titular: <strong>Liliana González</strong></p>
+            <p className="text-xs font-bold text-zinc-700">Monto: <strong>${precio}</strong></p>
+          </div>
+        </div>
+
         {/* Botón WhatsApp */}
         <a href={waUrl} target="_blank" rel="noopener noreferrer"
           className="flex items-center justify-center gap-3 w-full bg-[#25D366] text-white py-4 rounded-2xl font-black text-sm uppercase tracking-wider shadow-[4px_4px_0px_rgba(0,0,0,0.15)]">
@@ -47,24 +64,20 @@ export default function ConfirmacionPage() {
         </a>
 
         <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-4 text-left">
-          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Próximos pasos</p>
-          <p className="text-xs text-zinc-600 font-bold leading-relaxed">
-            1. Realiza la transferencia por <strong>${precio}</strong><br/>
+          <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-2">Próximos pasos</p>
+          <p className="text-xs text-zinc-700 font-bold leading-relaxed">
+            1. Transfiere <strong>${precio}</strong> a la cuenta de arriba<br/>
             2. Envía el comprobante por WhatsApp con tu código <strong>{codigo}</strong><br/>
-            3. Nosotros verificamos y confirmamos tu pedido<br/>
+            3. Verificamos y confirmamos tu pedido<br/>
             4. Te avisamos cuando el libro esté listo para retirar
           </p>
         </div>
 
         <Link href="/"
-          className="flex items-center justify-center gap-2 w-full border-2 border-black py-3 rounded-2xl text-sm font-black uppercase tracking-wider hover:bg-black hover:text-white transition-colors">
+          className="flex items-center justify-center gap-2 w-full border-2 border-black py-3 rounded-2xl text-sm font-black uppercase tracking-wider text-zinc-900 hover:bg-black hover:text-white transition-colors">
           Registrar otro libro
         </Link>
       </div>
-
-      <p className="text-[10px] text-zinc-300 font-bold uppercase tracking-widest mt-8">
-        La Crayola · Libros Escolares
-      </p>
     </main>
   );
 }

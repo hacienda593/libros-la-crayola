@@ -68,13 +68,13 @@ export default function HomePage() {
     <main className="min-h-screen bg-zinc-50">
       {/* Header */}
       <header className="bg-white border-b border-zinc-200 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
-          <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center shadow-[3px_3px_0px_rgba(0,0,0,1)]">
-            <BookOpen size={20} className="text-black"/>
-          </div>
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="https://hjdtjxxtqcrtbzftpqkn.supabase.co/storage/v1/object/public/logos-empresas/1717067647001.png"
+            alt="La Crayola" className="h-10 w-auto object-contain"/>
           <div>
-            <h1 className="text-base font-black uppercase tracking-tight leading-none">La Crayola</h1>
-            <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Libros Escolares</p>
+            <h1 className="text-base font-black uppercase tracking-tight leading-none text-zinc-900">La Crayola</h1>
+            <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest">Libros Escolares</p>
           </div>
         </div>
       </header>
