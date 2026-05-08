@@ -1,12 +1,11 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { getSupabase } from "@/lib/supabase";
-import { BookOpen, Send, ChevronLeft, CheckCircle } from "lucide-react";
+import { BookOpen, Send, CheckCircle } from "lucide-react";
 
-const CAJERO_PASSWORD  = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "crayola2025";
-const NEGOCIO_WA       = "593984341953";
+const CAJERO_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "crayola2025";
 
 type Libro = { id: string; titulo: string; grado: string; precio: number; unidad_id: string };
 type Unidad = { id: string; nombre: string };
