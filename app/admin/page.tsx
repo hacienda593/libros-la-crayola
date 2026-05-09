@@ -4,7 +4,8 @@ export const dynamic = "force-dynamic";
 import { useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import {
-  ChevronDown, ChevronUp, Search, LogOut, BookOpen, BarChart3, Printer, RefreshCw
+  ChevronDown, ChevronUp, Search, LogOut, BookOpen, BarChart3,
+  Printer, RefreshCw, XCircle, MessageCircle
 } from "lucide-react";
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "crayola2025";
@@ -23,7 +24,8 @@ type Pedido = {
 
 type ResumenLibro = {
   libro_id: string; titulo: string; grado: string;
-  pagados: number; pendiente_pedir: number; pedidos_prov: number; entregados: number;
+  pagados: number; pendiente_pedir: number; pedidos_prov: number;
+  recibidos: number; entregados: number;
 };
 
 const ESTADO_PROV_LABEL: Record<string, string> = {
@@ -41,7 +43,6 @@ function badgeProv(estado: string) {
   return `${base} bg-zinc-200 text-zinc-700`;
 }
 
-// "caja" badge
 function badgeVenta(pv: string | null) {
   if (pv === "caja") return (
     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-orange-100 text-orange-700">Caja</span>
@@ -49,8 +50,50 @@ function badgeVenta(pv: string | null) {
   return null;
 }
 
-type TabVista = "pendiente_pago" | "pagado" | "entregado" | "consolidado";
+type TabVista = "pendiente_pago" | "pagado" | "entregado" | "anulado" | "consolidado";
 
+/* ── WhatsApp helpers ── */
+function waUrl(telefono: string, msg: string) {
+  const tel = telefono.replace(/\D/g, "").replace(/^0/, "593");
+  return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
+}
+
+function msgPendientePago(p: Pedido) {
+  const fecha = new Date(p.created_at).toLocaleDateString("es-EC", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return (
+    `Estimado/a ${p.nombre_pad}, le informamos que hemos recibido su solicitud de pedido del libro ` +
+    `*${p.libro?.titulo ?? ""}* (${p.libro?.grado ?? ""}) por un valor de *$${p.total.toFixed(2)}*, ` +
+    `registrada el ${fecha} con codigo *${p.codigo}*.\n\n` +
+    `Sin embargo, aun no hemos recibido el comprobante de pago correspondiente. ` +
+    `Le solicitamos adjuntar el comprobante de transferencia a la brevedad posible; ` +
+    `de lo contrario, el pedido sera anulado automaticamente.\n\n` +
+    `Banco Pichincha · Ahorro: *2204882211* · Titular: Liliana Gonzalez\n\n` +
+    `Gracias por su comprension. — La Crayola`
+  );
+}
+
+function msgPagadoListo(p: Pedido) {
+  const fecha = new Date(p.created_at).toLocaleDateString("es-EC", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return (
+    `Estimado/a ${p.nombre_pad}, nos complace informarle que su libro ` +
+    `*${p.libro?.titulo ?? ""}* (${p.libro?.grado ?? ""}), solicitado el ${fecha} con codigo *${p.codigo}*, ` +
+    `ya se encuentra disponible en nuestra libreria *La Crayola*.\n\n` +
+    `Le invitamos a acercarse en nuestro horario de atencion para retirar su pedido. ` +
+    `Por favor presente el codigo de pedido al momento de retirar.\n\n` +
+    `Gracias por su preferencia. — La Crayola`
+  );
+}
+
+function msgEntregado(p: Pedido) {
+  const hoy = new Date().toLocaleDateString("es-EC", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return (
+    `Estimado/a ${p.nombre_pad}, confirmamos que el dia de hoy *${hoy}* le fue entregado el libro ` +
+    `*${p.libro?.titulo ?? ""}* (${p.libro?.grado ?? ""}) correspondiente al pedido *${p.codigo}*.\n\n` +
+    `Esperamos que sea de mucho provecho. Gracias por confiar en La Crayola.`
+  );
+}
+
+/* ── Recibo impresora 80mm ── */
 function imprimirRecibo(p: Pedido) {
   const fecha = new Date(p.created_at).toLocaleDateString("es-EC", { day: "2-digit", month: "2-digit", year: "numeric" });
   const fechaEntrega = new Date().toLocaleDateString("es-EC", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -121,6 +164,9 @@ export default function AdminPage() {
   const [guardando, setGuardando]   = useState(false);
   const [msgComp, setMsgComp]       = useState<Record<string, string>>({});
 
+  /* confirmación de anulación */
+  const [confirmAnular, setConfirmAnular] = useState<string | null>(null);
+
   function login() {
     if (password === ADMIN_PASSWORD) { setAutenticado(true); cargarPedidos(); }
     else setErrPass("Contraseña incorrecta.");
@@ -143,16 +189,17 @@ export default function AdminPage() {
 
   function calcularResumen(lista: Pedido[]) {
     const map: Record<string, ResumenLibro> = {};
-    lista.forEach(p => {
+    lista.filter(p => p.estado_pago !== "anulado").forEach(p => {
       if (!p.libro) return;
       const key = p.libro.titulo + p.libro.grado;
       if (!map[key]) map[key] = {
         libro_id: p.id, titulo: p.libro.titulo, grado: p.libro.grado,
-        pagados: 0, pendiente_pedir: 0, pedidos_prov: 0, entregados: 0,
+        pagados: 0, pendiente_pedir: 0, pedidos_prov: 0, recibidos: 0, entregados: 0,
       };
       if (p.estado_pago === "pagado") map[key].pagados++;
       if (p.estado_prov === "pendiente_pedir" && p.estado_pago === "pagado") map[key].pendiente_pedir++;
-      if (p.estado_prov === "pedido") map[key].pedidos_prov++;
+      if (p.estado_prov === "pedido")    map[key].pedidos_prov++;
+      if (p.estado_prov === "recibido")  map[key].recibidos++;
       if (p.estado_prov === "entregado") map[key].entregados++;
     });
     setResumen(Object.values(map));
@@ -198,30 +245,47 @@ export default function AdminPage() {
     cargarPedidos();
   }
 
-  async function actualizarEstadoProv(pedidoId: string, estado: string) {
-    await getSupabase().from("lb_pedidos").update({ estado_prov: estado }).eq("id", pedidoId);
+  async function actualizarEstadoProv(pedido: Pedido, estado: string) {
+    await getSupabase().from("lb_pedidos").update({ estado_prov: estado }).eq("id", pedido.id);
+    /* al marcar entregado: imprimir + abrir WhatsApp */
+    if (estado === "entregado") {
+      imprimirRecibo({ ...pedido, estado_prov: "entregado" });
+      setTimeout(() => {
+        window.open(waUrl(pedido.telefono, msgEntregado(pedido)), "_blank");
+      }, 600);
+    }
     cargarPedidos();
   }
 
-  /* ── Contadores por tab ── */
+  async function anularPedido(pedidoId: string) {
+    await getSupabase().from("lb_pedidos")
+      .update({ estado_pago: "anulado", estado_prov: "pendiente_pedir" })
+      .eq("id", pedidoId);
+    setConfirmAnular(null);
+    setExpandido(null);
+    cargarPedidos();
+  }
+
+  /* ── Contadores ── */
   const contadores = {
     pendiente_pago: pedidos.filter(p => p.estado_pago === "pendiente_pago").length,
     pagado:         pedidos.filter(p => p.estado_pago === "pagado" && p.estado_prov !== "entregado").length,
     entregado:      pedidos.filter(p => p.estado_prov === "entregado").length,
+    anulado:        pedidos.filter(p => p.estado_pago === "anulado").length,
   };
 
-  /* ── Filtrado según tab activo ── */
   function filtrarPorTab(lista: Pedido[]): Pedido[] {
     const q = busqueda.toLowerCase();
-    const matchBusq = (p: Pedido) => !q
+    const match = (p: Pedido) => !q
       || p.codigo.toLowerCase().includes(q)
       || p.nombre_pad.toLowerCase().includes(q)
       || p.telefono.includes(q)
       || (p.libro?.titulo ?? "").toLowerCase().includes(q);
 
-    if (tab === "pendiente_pago") return lista.filter(p => p.estado_pago === "pendiente_pago" && matchBusq(p));
-    if (tab === "pagado")         return lista.filter(p => p.estado_pago === "pagado" && p.estado_prov !== "entregado" && matchBusq(p));
-    if (tab === "entregado")      return lista.filter(p => p.estado_prov === "entregado" && matchBusq(p));
+    if (tab === "pendiente_pago") return lista.filter(p => p.estado_pago === "pendiente_pago" && match(p));
+    if (tab === "pagado")         return lista.filter(p => p.estado_pago === "pagado" && p.estado_prov !== "entregado" && match(p));
+    if (tab === "entregado")      return lista.filter(p => p.estado_prov === "entregado" && match(p));
+    if (tab === "anulado")        return lista.filter(p => p.estado_pago === "anulado" && match(p));
     return lista;
   }
 
@@ -248,15 +312,14 @@ export default function AdminPage() {
     </main>
   );
 
-  /* ── Tab button helper ── */
-  function TabBtn({ id, label, count, color }: { id: TabVista; label: string; count?: number; color?: string }) {
+  function TabBtn({ id, label, count, color }: { id: TabVista; label: string | React.ReactNode; count?: number; color?: string }) {
     const active = tab === id;
     return (
       <button onClick={() => { setTab(id); setExpandido(null); setBusqueda(""); }}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase transition-colors whitespace-nowrap
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-black uppercase transition-colors whitespace-nowrap
           ${active ? "bg-black text-yellow-400" : "text-zinc-700 hover:bg-zinc-100"}`}>
         {label}
-        {count !== undefined && (
+        {count !== undefined && count > 0 && (
           <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black
             ${active ? "bg-yellow-400 text-black" : (color ?? "bg-zinc-200 text-zinc-700")}`}>
             {count}
@@ -274,28 +337,26 @@ export default function AdminPage() {
           <div className="w-7 h-7 bg-yellow-400 rounded-lg flex items-center justify-center">
             <BookOpen size={14} className="text-black"/>
           </div>
-          <span className="font-black text-xs uppercase text-zinc-900 hidden sm:block">Admin · Libros</span>
+          <span className="font-black text-xs uppercase text-zinc-900 hidden sm:block">Admin</span>
         </div>
 
-        {/* Tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto">
-          <TabBtn id="pendiente_pago" label="Pendiente pago"
-            count={contadores.pendiente_pago}
-            color="bg-yellow-100 text-yellow-700"/>
+        <div className="flex items-center gap-0.5 overflow-x-auto">
+          <TabBtn id="pendiente_pago" label="Pend. pago"
+            count={contadores.pendiente_pago} color="bg-yellow-100 text-yellow-700"/>
           <TabBtn id="pagado" label="Pagados"
-            count={contadores.pagado}
-            color="bg-green-100 text-green-700"/>
+            count={contadores.pagado} color="bg-green-100 text-green-700"/>
           <TabBtn id="entregado" label="Entregados"
-            count={contadores.entregado}
-            color="bg-blue-100 text-blue-700"/>
-          <TabBtn id="consolidado" label={<><BarChart3 size={11} className="inline"/></>  as unknown as string}/>
+            count={contadores.entregado} color="bg-blue-100 text-blue-700"/>
+          <TabBtn id="anulado" label="Anulados"
+            count={contadores.anulado} color="bg-red-100 text-red-700"/>
+          <TabBtn id="consolidado" label={<BarChart3 size={13}/>}/>
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          <button onClick={cargarPedidos} className="p-1.5 text-zinc-600 hover:text-black transition-colors" title="Actualizar">
+          <button onClick={cargarPedidos} className="p-1.5 text-zinc-600 hover:text-black" title="Actualizar">
             <RefreshCw size={14}/>
           </button>
-          <button onClick={() => setAutenticado(false)} className="p-1.5 text-zinc-600 hover:text-black transition-colors">
+          <button onClick={() => setAutenticado(false)} className="p-1.5 text-zinc-600 hover:text-black">
             <LogOut size={14}/>
           </button>
         </div>
@@ -310,22 +371,26 @@ export default function AdminPage() {
               <div key={i} className="bg-white rounded-2xl border border-zinc-200 p-4">
                 <p className="font-black text-sm text-zinc-900">{r.titulo}</p>
                 <p className="text-xs text-zinc-700 font-bold mb-3">{r.grado}</p>
-                <div className="grid grid-cols-4 gap-2 text-center">
+                <div className="grid grid-cols-5 gap-1.5 text-center">
                   <div className="bg-green-50 rounded-xl p-2">
                     <p className="text-lg font-black text-green-700">{r.pagados}</p>
-                    <p className="text-[9px] font-black text-green-700 uppercase">Pagados</p>
+                    <p className="text-[8px] font-black text-green-700 uppercase">Pagados</p>
                   </div>
                   <div className="bg-yellow-50 rounded-xl p-2">
                     <p className="text-lg font-black text-yellow-700">{r.pendiente_pedir}</p>
-                    <p className="text-[9px] font-black text-yellow-700 uppercase">Sin pedir</p>
+                    <p className="text-[8px] font-black text-yellow-700 uppercase">Sin pedir</p>
                   </div>
                   <div className="bg-purple-50 rounded-xl p-2">
                     <p className="text-lg font-black text-purple-700">{r.pedidos_prov}</p>
-                    <p className="text-[9px] font-black text-purple-700 uppercase">Pedidos</p>
+                    <p className="text-[8px] font-black text-purple-700 uppercase">Pedidos</p>
+                  </div>
+                  <div className="bg-orange-50 rounded-xl p-2">
+                    <p className="text-lg font-black text-orange-700">{r.recibidos}</p>
+                    <p className="text-[8px] font-black text-orange-700 uppercase">En tienda</p>
                   </div>
                   <div className="bg-blue-50 rounded-xl p-2">
                     <p className="text-lg font-black text-blue-700">{r.entregados}</p>
-                    <p className="text-[9px] font-black text-blue-700 uppercase">Entregados</p>
+                    <p className="text-[8px] font-black text-blue-700 uppercase">Entregados</p>
                   </div>
                 </div>
                 {r.pendiente_pedir > 0 && (
@@ -334,25 +399,30 @@ export default function AdminPage() {
                     <span className="font-black text-lg text-zinc-900">{r.pendiente_pedir}</span>
                   </div>
                 )}
+                {r.recibidos > 0 && (
+                  <div className="mt-2 bg-orange-100 rounded-xl px-3 py-2 flex items-center justify-between">
+                    <span className="text-xs font-black text-orange-800">Disponibles en tienda para entregar</span>
+                    <span className="font-black text-lg text-orange-800">{r.recibidos}</span>
+                  </div>
+                )}
               </div>
             ))}
             {resumen.length === 0 && <p className="text-sm text-zinc-600 font-bold text-center py-8">Sin datos aún.</p>}
           </div>
         </div>
       ) : (
-        /* ===== LISTA DE PEDIDOS ===== */
+        /* ===== LISTA ===== */
         <div className="max-w-2xl mx-auto px-4 py-4">
-          {/* Título del tab */}
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-black text-sm uppercase text-zinc-900">
               {tab === "pendiente_pago" && "Pendiente de pago"}
               {tab === "pagado"         && "Pagados · Pendiente entrega"}
               {tab === "entregado"      && "Entregados"}
+              {tab === "anulado"        && "Anulados"}
             </h2>
             <span className="text-xs font-black text-zinc-500">{pedidosFiltrados.length} pedidos</span>
           </div>
 
-          {/* Búsqueda */}
           <div className="relative mb-4">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"/>
             <input placeholder="Buscar código, nombre, libro..."
@@ -367,15 +437,22 @@ export default function AdminPage() {
           ) : (
             <div className="space-y-2">
               {pedidosFiltrados.map(p => (
-                <div key={p.id} className="bg-white rounded-2xl border border-zinc-200 overflow-hidden">
+                <div key={p.id} className={`bg-white rounded-2xl border overflow-hidden
+                  ${p.estado_pago === "anulado" ? "border-red-200 opacity-75" : "border-zinc-200"}`}>
+
                   {/* Fila resumen */}
                   <button className="w-full flex items-center gap-3 px-4 py-3 text-left"
                     onClick={() => setExpandido(expandido === p.id ? null : p.id)}>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-black text-sm text-zinc-900">{p.codigo}</span>
+                        <span className={`font-black text-sm ${p.estado_pago === "anulado" ? "line-through text-zinc-400" : "text-zinc-900"}`}>
+                          {p.codigo}
+                        </span>
+                        {p.estado_pago === "anulado"
+                          ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-red-100 text-red-700">Anulado</span>
+                          : <span className={badgeProv(p.estado_prov)}>{ESTADO_PROV_LABEL[p.estado_prov]}</span>
+                        }
                         {badgeVenta(p.punto_venta)}
-                        <span className={badgeProv(p.estado_prov)}>{ESTADO_PROV_LABEL[p.estado_prov]}</span>
                       </div>
                       <p className="text-xs text-zinc-700 font-bold truncate mt-0.5">
                         {p.nombre_pad} · {p.libro?.titulo}
@@ -390,6 +467,7 @@ export default function AdminPage() {
                   {/* Detalle expandido */}
                   {expandido === p.id && (
                     <div className="border-t border-zinc-100 px-4 py-4 space-y-4">
+                      {/* Datos */}
                       <div className="grid grid-cols-2 gap-3 text-xs">
                         <div>
                           <p className="text-zinc-500 font-black uppercase tracking-widest text-[9px]">Representante</p>
@@ -432,49 +510,96 @@ export default function AdminPage() {
                         </div>
                       </div>
 
-                      {/* Verificar pago — solo en tab pendiente */}
-                      {p.estado_pago === "pendiente_pago" && (
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3">
-                          <p className="text-[10px] font-black text-yellow-800 uppercase tracking-widest mb-2">Verificar transferencia</p>
-                          <div className="flex gap-2 mb-2">
-                            <input placeholder="N° comprobante" value={compNumero}
-                              onChange={e => setCompNumero(e.target.value)}
-                              className="flex-1 border border-zinc-300 rounded-xl px-3 py-2 text-xs font-bold text-zinc-900 placeholder:text-zinc-500 focus:outline-none focus:border-black"/>
-                            <input placeholder="Monto $" value={compMonto} type="number"
-                              onChange={e => setCompMonto(e.target.value)}
-                              className="w-24 border border-zinc-300 rounded-xl px-3 py-2 text-xs font-bold text-zinc-900 placeholder:text-zinc-500 focus:outline-none focus:border-black"/>
+                      {/* ── Acciones según estado ── */}
+                      {p.estado_pago !== "anulado" && (
+                        <>
+                          {/* WhatsApp contextual */}
+                          {p.estado_pago === "pendiente_pago" && (
+                            <a href={waUrl(p.telefono, msgPendientePago(p))} target="_blank"
+                              className="w-full flex items-center justify-center gap-2 bg-[#25D366] text-white py-2.5 rounded-xl font-black text-xs uppercase tracking-wider">
+                              <MessageCircle size={13}/>
+                              WhatsApp · Solicitar comprobante de pago
+                            </a>
+                          )}
+
+                          {p.estado_pago === "pagado" && p.estado_prov !== "entregado" && (
+                            <a href={waUrl(p.telefono, msgPagadoListo(p))} target="_blank"
+                              className="w-full flex items-center justify-center gap-2 bg-[#25D366] text-white py-2.5 rounded-xl font-black text-xs uppercase tracking-wider">
+                              <MessageCircle size={13}/>
+                              WhatsApp · Libro listo para retirar
+                            </a>
+                          )}
+
+                          {/* Verificar pago */}
+                          {p.estado_pago === "pendiente_pago" && (
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3">
+                              <p className="text-[10px] font-black text-yellow-800 uppercase tracking-widest mb-2">Verificar transferencia</p>
+                              <div className="flex gap-2 mb-2">
+                                <input placeholder="N° comprobante" value={compNumero}
+                                  onChange={e => setCompNumero(e.target.value)}
+                                  className="flex-1 border border-zinc-300 rounded-xl px-3 py-2 text-xs font-bold text-zinc-900 placeholder:text-zinc-500 focus:outline-none focus:border-black"/>
+                                <input placeholder="Monto $" value={compMonto} type="number"
+                                  onChange={e => setCompMonto(e.target.value)}
+                                  className="w-24 border border-zinc-300 rounded-xl px-3 py-2 text-xs font-bold text-zinc-900 placeholder:text-zinc-500 focus:outline-none focus:border-black"/>
+                              </div>
+                              {msgComp[p.id] && <p className="text-[10px] font-bold text-red-700 mb-2">{msgComp[p.id]}</p>}
+                              <button onClick={() => guardarComprobante(p)} disabled={guardando}
+                                className="w-full bg-black text-yellow-400 py-2 rounded-xl text-xs font-black uppercase disabled:opacity-50">
+                                {guardando ? "Guardando..." : "Marcar como pagado"}
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Estado proveedor */}
+                          <div>
+                            <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-2">Estado con proveedor</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {(["pendiente_pedir","pedido","recibido","entregado"] as const).map(est => (
+                                <button key={est} onClick={() => actualizarEstadoProv(p, est)}
+                                  className={`py-2 rounded-xl text-[10px] font-black uppercase transition-all border-2
+                                    ${p.estado_prov === est
+                                      ? "bg-black text-yellow-400 border-black"
+                                      : "border-zinc-300 text-zinc-700 hover:border-black"}`}>
+                                  {ESTADO_PROV_LABEL[est]}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                          {msgComp[p.id] && <p className="text-[10px] font-bold text-red-700 mb-2">{msgComp[p.id]}</p>}
-                          <button onClick={() => guardarComprobante(p)} disabled={guardando}
-                            className="w-full bg-black text-yellow-400 py-2 rounded-xl text-xs font-black uppercase disabled:opacity-50">
-                            {guardando ? "Guardando..." : "Marcar como pagado"}
-                          </button>
-                        </div>
-                      )}
 
-                      {/* Estado proveedor */}
-                      <div>
-                        <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-2">Estado con proveedor</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {(["pendiente_pedir","pedido","recibido","entregado"] as const).map(est => (
-                            <button key={est} onClick={() => actualizarEstadoProv(p.id, est)}
-                              className={`py-2 rounded-xl text-[10px] font-black uppercase transition-all border-2
-                                ${p.estado_prov === est
-                                  ? "bg-black text-yellow-400 border-black"
-                                  : "border-zinc-300 text-zinc-700 hover:border-black"}`}>
-                              {ESTADO_PROV_LABEL[est]}
+                          {/* Imprimir recibo — solo cuando entregado */}
+                          {p.estado_prov === "entregado" && (
+                            <button onClick={() => imprimirRecibo(p)}
+                              className="w-full flex items-center justify-center gap-2 bg-zinc-900 text-white py-3 rounded-xl font-black text-xs uppercase tracking-wider hover:bg-black transition-colors">
+                              <Printer size={14}/>
+                              Imprimir recibo de entrega
                             </button>
-                          ))}
-                        </div>
-                      </div>
+                          )}
 
-                      {/* Imprimir recibo — solo cuando entregado */}
-                      {p.estado_prov === "entregado" && (
-                        <button onClick={() => imprimirRecibo(p)}
-                          className="w-full flex items-center justify-center gap-2 bg-zinc-900 text-white py-3 rounded-xl font-black text-xs uppercase tracking-wider hover:bg-black transition-colors">
-                          <Printer size={14}/>
-                          Imprimir recibo de entrega
-                        </button>
+                          {/* Anular pedido */}
+                          {confirmAnular === p.id ? (
+                            <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                              <p className="text-xs font-black text-red-800 mb-3">
+                                ¿Confirmas anular el pedido <strong>{p.codigo}</strong>? Esta accion no se puede deshacer.
+                              </p>
+                              <div className="flex gap-2">
+                                <button onClick={() => anularPedido(p.id)}
+                                  className="flex-1 bg-red-600 text-white py-2 rounded-xl text-xs font-black uppercase">
+                                  Si, anular
+                                </button>
+                                <button onClick={() => setConfirmAnular(null)}
+                                  className="flex-1 border-2 border-zinc-300 py-2 rounded-xl text-xs font-black uppercase text-zinc-700">
+                                  Cancelar
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button onClick={() => setConfirmAnular(p.id)}
+                              className="w-full flex items-center justify-center gap-2 border-2 border-red-200 text-red-600 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider hover:bg-red-50 transition-colors">
+                              <XCircle size={13}/>
+                              Anular pedido
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   )}
