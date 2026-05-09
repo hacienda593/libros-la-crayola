@@ -5,7 +5,7 @@ import { useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import {
   ChevronDown, ChevronUp, Search, LogOut, BookOpen, BarChart3,
-  Printer, RefreshCw, XCircle, MessageCircle
+  Printer, RefreshCw, XCircle, MessageCircle, PackagePlus
 } from "lucide-react";
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "crayola2025";
@@ -24,9 +24,12 @@ type Pedido = {
 
 type ResumenLibro = {
   libro_id: string; titulo: string; grado: string;
+  stock_recibido: number;
   pagados: number; pendiente_pedir: number; pedidos_prov: number;
   recibidos: number; entregados: number;
 };
+
+type StockEntrada = { id: string; libro_id: string; cantidad: number; nota: string | null; created_at: string };
 
 const ESTADO_PROV_LABEL: Record<string, string> = {
   pendiente_pedir: "Sin pedir",
@@ -167,6 +170,13 @@ export default function AdminPage() {
   /* confirmación de anulación */
   const [confirmAnular, setConfirmAnular] = useState<string | null>(null);
 
+  /* kardex */
+  const [entradas,       setEntradas]       = useState<StockEntrada[]>([]);
+  const [kardexAbierto,  setKardexAbierto]  = useState<string | null>(null); // libro_id
+  const [nuevaCantidad,  setNuevaCantidad]  = useState("");
+  const [nuevaNota,      setNuevaNota]      = useState("");
+  const [guardandoStock, setGuardandoStock] = useState(false);
+
   function login() {
     if (password === ADMIN_PASSWORD) { setAutenticado(true); cargarPedidos(); }
     else setErrPass("Contraseña incorrecta.");
@@ -174,26 +184,55 @@ export default function AdminPage() {
 
   async function cargarPedidos() {
     setCargando(true);
-    const { data } = await getSupabase()
-      .from("lb_pedidos")
-      .select(`id, codigo, nombre_est, nombre_pad, cedula, telefono,
-               cantidad, total, estado_pago, estado_prov, punto_venta,
-               comp_numero, comp_monto, created_at,
-               libro:lb_libros(titulo, grado, precio),
-               unidad:lb_unidades(nombre)`)
-      .order("created_at", { ascending: false });
-    setPedidos((data as unknown as Pedido[]) ?? []);
-    calcularResumen((data as unknown as Pedido[]) ?? []);
+    const [{ data }, { data: librosData }, { data: entradasData }] = await Promise.all([
+      getSupabase()
+        .from("lb_pedidos")
+        .select(`id, codigo, nombre_est, nombre_pad, cedula, telefono,
+                 cantidad, total, estado_pago, estado_prov, punto_venta,
+                 comp_numero, comp_monto, created_at,
+                 libro:lb_libros(titulo, grado, precio),
+                 unidad:lb_unidades(nombre)`)
+        .order("created_at", { ascending: false }),
+      getSupabase().from("lb_libros").select("id, titulo, grado"),
+      getSupabase().from("lb_stock_entradas").select("id, libro_id, cantidad, nota, created_at")
+        .order("created_at", { ascending: false }),
+    ]);
+    const lista      = (data        as unknown as Pedido[])       ?? [];
+    const librosList = (librosData  as unknown as { id: string; titulo: string; grado: string }[]) ?? [];
+    const entradasList = (entradasData as unknown as StockEntrada[]) ?? [];
+    setPedidos(lista);
+    setEntradas(entradasList);
+    calcularResumen(lista, librosList, entradasList);
     setCargando(false);
   }
 
-  function calcularResumen(lista: Pedido[]) {
+  function calcularResumen(
+    lista: Pedido[],
+    libros: { id: string; titulo: string; grado: string }[],
+    entradasList: StockEntrada[]
+  ) {
+    /* stock recibido = suma de todas las entradas por libro */
+    const stockMap: Record<string, number> = {};
+    entradasList.forEach(e => {
+      stockMap[e.libro_id] = (stockMap[e.libro_id] ?? 0) + e.cantidad;
+    });
+
     const map: Record<string, ResumenLibro> = {};
+    libros.forEach(l => {
+      const key = l.titulo + l.grado;
+      map[key] = {
+        libro_id: l.id, titulo: l.titulo, grado: l.grado,
+        stock_recibido: stockMap[l.id] ?? 0,
+        pagados: 0, pendiente_pedir: 0, pedidos_prov: 0, recibidos: 0, entregados: 0,
+      };
+    });
+
     lista.filter(p => p.estado_pago !== "anulado").forEach(p => {
       if (!p.libro) return;
       const key = p.libro.titulo + p.libro.grado;
       if (!map[key]) map[key] = {
         libro_id: p.id, titulo: p.libro.titulo, grado: p.libro.grado,
+        stock_recibido: 0,
         pagados: 0, pendiente_pedir: 0, pedidos_prov: 0, recibidos: 0, entregados: 0,
       };
       if (p.estado_pago === "pagado") map[key].pagados++;
@@ -203,6 +242,21 @@ export default function AdminPage() {
       if (p.estado_prov === "entregado") map[key].entregados++;
     });
     setResumen(Object.values(map));
+  }
+
+  async function registrarEntrada(libroId: string) {
+    const cant = parseInt(nuevaCantidad);
+    if (isNaN(cant) || cant <= 0) return;
+    setGuardandoStock(true);
+    await getSupabase().from("lb_stock_entradas").insert({
+      libro_id: libroId,
+      cantidad: cant,
+      nota:     nuevaNota.trim() || null,
+    });
+    setNuevaCantidad("");
+    setNuevaNota("");
+    setGuardandoStock(false);
+    cargarPedidos();
   }
 
   async function guardarComprobante(pedido: Pedido) {
@@ -365,48 +419,119 @@ export default function AdminPage() {
       {tab === "consolidado" ? (
         /* ===== CONSOLIDADO ===== */
         <div className="max-w-2xl mx-auto px-4 py-6">
-          <h2 className="font-black uppercase text-sm tracking-wide mb-4 text-zinc-900">Consolidado por libro</h2>
+          <h2 className="font-black uppercase text-sm tracking-wide mb-1 text-zinc-900">Consolidado por libro</h2>
+          <p className="text-xs text-zinc-500 font-bold mb-4">Ingresa el stock recibido del proveedor para ver el disponible real.</p>
           <div className="space-y-3">
-            {resumen.map((r, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-zinc-200 p-4">
-                <p className="font-black text-sm text-zinc-900">{r.titulo}</p>
-                <p className="text-xs text-zinc-700 font-bold mb-3">{r.grado}</p>
-                <div className="grid grid-cols-5 gap-1.5 text-center">
-                  <div className="bg-green-50 rounded-xl p-2">
-                    <p className="text-lg font-black text-green-700">{r.pagados}</p>
-                    <p className="text-[8px] font-black text-green-700 uppercase">Pagados</p>
+            {resumen.map((r, i) => {
+              const disponible = r.stock_recibido - r.pagados;
+              const sinStock   = r.stock_recibido > 0 && disponible <= 0;
+              const pocoStock  = r.stock_recibido > 0 && disponible > 0 && disponible <= 3;
+              return (
+                <div key={i} className={`bg-white rounded-2xl border p-4
+                  ${sinStock ? "border-red-300" : pocoStock ? "border-yellow-300" : "border-zinc-200"}`}>
+
+                  {/* Encabezado */}
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div>
+                      <p className="font-black text-sm text-zinc-900">{r.titulo}</p>
+                      <p className="text-xs text-zinc-700 font-bold">{r.grado}</p>
+                    </div>
+                    <button onClick={() => {
+                        setKardexAbierto(kardexAbierto === r.libro_id ? null : r.libro_id);
+                        setNuevaCantidad(""); setNuevaNota("");
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1.5 bg-black text-yellow-400 rounded-xl text-[10px] font-black uppercase shrink-0">
+                      <PackagePlus size={12}/> Entrada
+                    </button>
                   </div>
-                  <div className="bg-yellow-50 rounded-xl p-2">
-                    <p className="text-lg font-black text-yellow-700">{r.pendiente_pedir}</p>
-                    <p className="text-[8px] font-black text-yellow-700 uppercase">Sin pedir</p>
+
+                  {/* Formulario kardex */}
+                  {kardexAbierto === r.libro_id && (
+                    <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-3 mb-3 space-y-2">
+                      <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Registrar entrada de stock</p>
+                      <div className="flex gap-2">
+                        <input type="number" min="1" placeholder="Cantidad" value={nuevaCantidad}
+                          onChange={e => setNuevaCantidad(e.target.value)}
+                          className="w-24 border-2 border-zinc-200 rounded-xl px-3 py-2 text-sm font-black text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-black"/>
+                        <input type="text" placeholder="Nota (ej: Lote 1, Mayo)" value={nuevaNota}
+                          onChange={e => setNuevaNota(e.target.value)}
+                          className="flex-1 border-2 border-zinc-200 rounded-xl px-3 py-2 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-black"/>
+                      </div>
+                      <button onClick={() => registrarEntrada(r.libro_id)} disabled={guardandoStock || !nuevaCantidad}
+                        className="w-full bg-black text-yellow-400 py-2 rounded-xl text-xs font-black uppercase disabled:opacity-40">
+                        {guardandoStock ? "Guardando..." : "Confirmar entrada"}
+                      </button>
+
+                      {/* Historial de entradas */}
+                      {entradas.filter(e => e.libro_id === r.libro_id).length > 0 && (
+                        <div className="pt-2 border-t border-zinc-200">
+                          <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1.5">Historial</p>
+                          <div className="space-y-1">
+                            {entradas.filter(e => e.libro_id === r.libro_id).map(e => (
+                              <div key={e.id} className="flex items-center justify-between text-xs">
+                                <span className="text-zinc-600 font-bold">
+                                  {new Date(e.created_at).toLocaleDateString("es-EC", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                                  {e.nota ? ` · ${e.nota}` : ""}
+                                </span>
+                                <span className="font-black text-green-700">+{e.cantidad}</span>
+                              </div>
+                            ))}
+                            <div className="flex items-center justify-between text-xs pt-1 border-t border-zinc-200">
+                              <span className="font-black text-zinc-700">Total recibido</span>
+                              <span className="font-black text-zinc-900">{r.stock_recibido}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Contadores */}
+                  <div className="grid grid-cols-4 gap-1.5 text-center mb-3">
+                    <div className="bg-green-50 rounded-xl p-2">
+                      <p className="text-lg font-black text-green-700">{r.pagados}</p>
+                      <p className="text-[8px] font-black text-green-700 uppercase">Pagados</p>
+                    </div>
+                    <div className="bg-yellow-50 rounded-xl p-2">
+                      <p className="text-lg font-black text-yellow-700">{r.pendiente_pedir}</p>
+                      <p className="text-[8px] font-black text-yellow-700 uppercase">Sin pedir</p>
+                    </div>
+                    <div className="bg-purple-50 rounded-xl p-2">
+                      <p className="text-lg font-black text-purple-700">{r.pedidos_prov}</p>
+                      <p className="text-[8px] font-black text-purple-700 uppercase">Pedidos</p>
+                    </div>
+                    <div className="bg-blue-50 rounded-xl p-2">
+                      <p className="text-lg font-black text-blue-700">{r.entregados}</p>
+                      <p className="text-[8px] font-black text-blue-700 uppercase">Entregados</p>
+                    </div>
                   </div>
-                  <div className="bg-purple-50 rounded-xl p-2">
-                    <p className="text-lg font-black text-purple-700">{r.pedidos_prov}</p>
-                    <p className="text-[8px] font-black text-purple-700 uppercase">Pedidos</p>
-                  </div>
-                  <div className="bg-orange-50 rounded-xl p-2">
-                    <p className="text-lg font-black text-orange-700">{r.recibidos}</p>
-                    <p className="text-[8px] font-black text-orange-700 uppercase">En tienda</p>
-                  </div>
-                  <div className="bg-blue-50 rounded-xl p-2">
-                    <p className="text-lg font-black text-blue-700">{r.entregados}</p>
-                    <p className="text-[8px] font-black text-blue-700 uppercase">Entregados</p>
-                  </div>
+
+                  {/* Disponible */}
+                  {r.stock_recibido > 0 && (
+                    <div className={`rounded-xl px-3 py-2 flex items-center justify-between
+                      ${sinStock ? "bg-red-100" : pocoStock ? "bg-yellow-100" : "bg-green-100"}`}>
+                      <span className={`text-xs font-black
+                        ${sinStock ? "text-red-800" : pocoStock ? "text-yellow-800" : "text-green-800"}`}>
+                        {sinStock  ? "Sin stock — todos vendidos" :
+                         pocoStock ? "Poco stock — quedan pocos" :
+                                     "Disponible para vender"}
+                      </span>
+                      <span className={`font-black text-2xl
+                        ${sinStock ? "text-red-700" : pocoStock ? "text-yellow-700" : "text-green-700"}`}>
+                        {Math.max(0, disponible)}
+                      </span>
+                    </div>
+                  )}
+
+                  {r.pendiente_pedir > 0 && (
+                    <div className="mt-2 bg-yellow-400 rounded-xl px-3 py-2 flex items-center justify-between">
+                      <span className="text-xs font-black text-zinc-900">Pedir al proveedor</span>
+                      <span className="font-black text-lg text-zinc-900">{r.pendiente_pedir}</span>
+                    </div>
+                  )}
                 </div>
-                {r.pendiente_pedir > 0 && (
-                  <div className="mt-3 bg-yellow-400 rounded-xl px-3 py-2 flex items-center justify-between">
-                    <span className="text-xs font-black text-zinc-900">Pedir al proveedor</span>
-                    <span className="font-black text-lg text-zinc-900">{r.pendiente_pedir}</span>
-                  </div>
-                )}
-                {r.recibidos > 0 && (
-                  <div className="mt-2 bg-orange-100 rounded-xl px-3 py-2 flex items-center justify-between">
-                    <span className="text-xs font-black text-orange-800">Disponibles en tienda para entregar</span>
-                    <span className="font-black text-lg text-orange-800">{r.recibidos}</span>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
             {resumen.length === 0 && <p className="text-sm text-zinc-600 font-bold text-center py-8">Sin datos aún.</p>}
           </div>
         </div>
