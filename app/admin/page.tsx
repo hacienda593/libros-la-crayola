@@ -64,14 +64,12 @@ function waUrl(telefono: string, msg: string) {
 function msgPendientePago(p: Pedido) {
   const fecha = new Date(p.created_at).toLocaleDateString("es-EC", { day: "2-digit", month: "2-digit", year: "numeric" });
   return (
-    `Estimado/a ${p.nombre_pad}, le informamos que hemos recibido su solicitud de pedido del libro ` +
-    `*${p.libro?.titulo ?? ""}* (${p.libro?.grado ?? ""}) por un valor de *$${p.total.toFixed(2)}*, ` +
-    `registrada el ${fecha} con codigo *${p.codigo}*.\n\n` +
-    `Sin embargo, aun no hemos recibido el comprobante de pago correspondiente. ` +
-    `Le solicitamos adjuntar el comprobante de transferencia a la brevedad posible; ` +
-    `de lo contrario, el pedido sera anulado automaticamente.\n\n` +
+    `Hola ${p.nombre_pad}! Gracias por registrar tu pedido en La Crayola.\n\n` +
+    `Tenemos apartado para ti el libro *${p.libro?.titulo ?? ""}* (${p.libro?.grado ?? ""}) ` +
+    `por *$${p.total.toFixed(2)}*, con codigo de pedido *${p.codigo}* registrado el ${fecha}.\n\n` +
+    `Para confirmar tu pedido solo necesitamos que nos envies el comprobante de la transferencia al siguiente numero:\n\n` +
     `Banco Pichincha · Ahorro: *2204882211* · Titular: Liliana Gonzalez\n\n` +
-    `Gracias por su comprension. — La Crayola`
+    `Una vez confirmado tu pago procesamos tu pedido de inmediato. Cualquier consulta con gusto te ayudamos!`
   );
 }
 
