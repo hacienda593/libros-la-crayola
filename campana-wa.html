@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<title>Campaña WhatsApp — La Crayola</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 24px; }
+  h1 { font-size: 16px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; }
+  p.sub { font-size: 12px; color: #555; margin-bottom: 16px; }
+
+  textarea {
+    width: 100%; height: 110px; border: 2px solid #ddd; border-radius: 10px;
+    padding: 10px; font-size: 13px; resize: vertical; margin-bottom: 12px;
+  }
+
+  .acciones {
+    display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .acciones button {
+    padding: 8px 16px; border-radius: 8px; font-weight: 900; font-size: 12px;
+    text-transform: uppercase; cursor: pointer; border: 2px solid #000;
+  }
+  .btn-add    { background: #000; color: #facc15; }
+  .btn-clear  { background: #fff; color: #000; }
+  .btn-reset  { background: #fff; color: #e53e3e; border-color: #e53e3e; }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+  thead tr { background: #000; color: #facc15; }
+  th, td { padding: 10px 14px; text-align: left; font-size: 13px; border-bottom: 1px solid #eee; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+  td input[type=text] {
+    border: 2px solid #ddd; border-radius: 8px; padding: 5px 10px;
+    font-size: 13px; width: 170px; font-family: monospace; font-weight: bold;
+  }
+  td input[type=text]:focus { outline: none; border-color: #000; }
+
+  .btn-send {
+    background: #25D366; color: #fff; border: none; padding: 7px 14px;
+    border-radius: 8px; font-weight: 900; font-size: 11px; text-transform: uppercase;
+    cursor: pointer; white-space: nowrap;
+  }
+  .btn-send:hover { background: #1da853; }
+  .btn-send:disabled { background: #aaa; cursor: default; }
+
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 900; text-transform: uppercase;
+  }
+  .badge-pendiente { background: #fef3c7; color: #92400e; }
+  .badge-enviado   { background: #d1fae5; color: #065f46; }
+
+  .btn-del {
+    background: none; border: none; color: #ccc; cursor: pointer; font-size: 16px; padding: 0 4px;
+  }
+  .btn-del:hover { color: #e53e3e; }
+
+  #contador { font-size: 12px; color: #555; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<h1>Campana WhatsApp — La Crayola</h1>
+<p class="sub">Abre cada WhatsApp, verifica el mensaje y dale Enviar. El estado se marca automaticamente.</p>
+
+<textarea id="mensaje">Estimado padre o madre de familia, si desea adquirir los libros de ingles de la Escuela San Patricio de Fe y Alegria los puede adquirir en nuestra tienda online https://libros-la-crayola.vercel.app/ y retirar en La Crayola. Los libros se entregaran en funcion de la disponibilidad. Cualquier inquietud estamos prestos a solventar. — La Crayola</textarea>
+
+<div class="acciones">
+  <button class="btn-add" onclick="agregarFila()">+ Agregar numero</button>
+  <button class="btn-clear" onclick="pegarLista()">Pegar lista</button>
+  <label class="btn-clear" style="cursor:pointer">
+    Cargar TXT
+    <input type="file" accept=".txt" style="display:none" onchange="cargarTxt(this)"/>
+  </label>
+  <button class="btn-reset" onclick="resetearEnviados()">Resetear enviados</button>
+  <button class="btn-reset" onclick="limpiarTodo()">Limpiar todo</button>
+</div>
+
+<div id="contador"></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Telefono (593XXXXXXXXX)</th>
+      <th>Enviar</th>
+      <th>Estado</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="tabla"></tbody>
+</table>
+
+<script>
+  /* ── datos en localStorage ── */
+  const KEY_FILAS   = "crayola_campana_filas";
+  const KEY_ESTADOS = "crayola_campana_estados";
+
+  function cargarDatos() {
+    try { return JSON.parse(localStorage.getItem(KEY_FILAS) || "[]"); } catch { return []; }
+  }
+  function cargarEstados() {
+    try { return JSON.parse(localStorage.getItem(KEY_ESTADOS) || "{}"); } catch { return {}; }
+  }
+
+  let filas   = cargarDatos();   // array de { id, tel }
+  let estados = cargarEstados(); // { id: "enviado" | "pendiente" }
+
+  if (filas.length === 0) {
+    // filas de ejemplo
+    filas = [
+      { id: uid(), tel: "593999000001" },
+      { id: uid(), tel: "593999000002" },
+    ];
+    guardar();
+  }
+
+  function uid() { return Math.random().toString(36).slice(2, 10); }
+
+  function guardar() {
+    localStorage.setItem(KEY_FILAS,   JSON.stringify(filas));
+    localStorage.setItem(KEY_ESTADOS, JSON.stringify(estados));
+    renderizar();
+  }
+
+  function renderizar() {
+    const tbody = document.getElementById("tabla");
+    tbody.innerHTML = "";
+    filas.forEach((f, i) => {
+      const enviado = estados[f.id] === "enviado";
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td style="color:#999;font-size:12px">${i + 1}</td>
+        <td><input type="text" value="${f.tel}" id="tel_${f.id}"
+              onchange="actualizarTel('${f.id}', this.value)"
+              placeholder="593XXXXXXXXX"/></td>
+        <td>
+          <button class="btn-send" onclick="enviarWA('${f.id}')" ${enviado ? "disabled" : ""}>
+            Abrir WhatsApp
+          </button>
+        </td>
+        <td>
+          <span class="badge ${enviado ? "badge-enviado" : "badge-pendiente"}">
+            ${enviado ? "Enviado" : "Pendiente"}
+          </span>
+        </td>
+        <td><button class="btn-del" onclick="eliminarFila('${f.id}')" title="Eliminar">×</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    const total    = filas.length;
+    const enviados = filas.filter(f => estados[f.id] === "enviado").length;
+    document.getElementById("contador").textContent =
+      `Total: ${total} numeros · Enviados: ${enviados} · Pendientes: ${total - enviados}`;
+  }
+
+  function enviarWA(id) {
+    const input = document.getElementById("tel_" + id);
+    const tel   = (input ? input.value : "").replace(/\D/g, "");
+    const msg   = document.getElementById("mensaje").value.trim();
+    if (!tel || tel.length < 10) { alert("Numero invalido: " + tel); return; }
+    const url = "https://wa.me/" + tel + "?text=" + encodeURIComponent(msg);
+    window.open(url, "_blank");
+    estados[id] = "enviado";
+    guardar();
+  }
+
+  function actualizarTel(id, val) {
+    const f = filas.find(x => x.id === id);
+    if (f) { f.tel = val.replace(/\s/g, ""); guardar(); }
+  }
+
+  function agregarFila() {
+    filas.push({ id: uid(), tel: "593" });
+    guardar();
+    /* enfocar el nuevo input */
+    setTimeout(() => {
+      const inputs = document.querySelectorAll("#tabla input[type=text]");
+      if (inputs.length) inputs[inputs.length - 1].focus();
+    }, 50);
+  }
+
+  function eliminarFila(id) {
+    filas = filas.filter(f => f.id !== id);
+    delete estados[id];
+    guardar();
+  }
+
+  function resetearEnviados() {
+    if (!confirm("Resetear todos los estados a Pendiente?")) return;
+    estados = {};
+    guardar();
+  }
+
+  function parsearNumeros(texto) {
+    const nums = texto.split(/[\n,;|\t]+/).map(s => s.trim()).filter(Boolean);
+    let agregados = 0;
+    nums.forEach(n => {
+      let tel = n.replace(/\D/g, "");
+      if (tel.startsWith("0")) tel = "593" + tel.slice(1);
+      if (tel.length >= 10) { filas.push({ id: uid(), tel }); agregados++; }
+    });
+    return agregados;
+  }
+
+  function cargarTxt(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const agregados = parsearNumeros(e.target.result);
+      guardar();
+      alert(agregados + " numeros cargados desde " + file.name);
+    };
+    reader.readAsText(file);
+    input.value = ""; /* permite volver a cargar el mismo archivo */
+  }
+
+  function limpiarTodo() {
+    if (!confirm("Eliminar TODOS los numeros y estados?")) return;
+    filas = []; estados = {}; guardar();
+  }
+
+  function pegarLista() {
+    const texto = prompt(
+      "Pega los numeros (uno por linea o separados por coma).\n" +
+      "Pueden ser 09XXXXXXXX o 5939XXXXXXXX, se convierten automaticamente."
+    );
+    if (!texto) return;
+    const agregados = parsearNumeros(texto);
+    if (agregados) guardar();
+    else alert("No se encontraron numeros validos.");
+  }
+
+  renderizar();
+</script>
+</body>
+</html>
