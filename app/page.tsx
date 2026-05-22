@@ -13,8 +13,6 @@ type Libro  = {
   unidad_id: string;
 };
 type StockEntrada = { libro_id: string; cantidad: number };
-type PedidoPagado = { libro_id: string };
-
 type LibroDisponible = Libro & { disponible: number };
 
 export default function HomePage() {
@@ -27,12 +25,12 @@ export default function HomePage() {
 
   useEffect(() => {
     async function cargar() {
-      const [{ data: unis }, { data: libs }, { data: entradas }, { data: pagos }] = await Promise.all([
+      const [{ data: unis }, { data: libs }, { data: entradas }, { data: pedidos }] = await Promise.all([
         getSupabase().from("lb_unidades").select("id, nombre").eq("activo", true).order("nombre"),
         getSupabase().from("lb_libros").select("id, titulo, materia, grado, precio, imagen_url, unidad_id")
           .eq("activo", true).order("grado").order("materia"),
         getSupabase().from("lb_stock_entradas").select("libro_id, cantidad"),
-        getSupabase().from("lb_pedidos").select("libro_id").eq("estado_pago", "pagado"),
+        getSupabase().from("lb_pedidos").select("libro_id").in("estado_pago", ["pagado", "pendiente_pago"]),
       ]);
 
       const stockMap: Record<string, number> = {};
@@ -40,15 +38,15 @@ export default function HomePage() {
         stockMap[e.libro_id] = (stockMap[e.libro_id] ?? 0) + e.cantidad;
       });
 
-      const pagosMap: Record<string, number> = {};
-      (pagos as PedidoPagado[] ?? []).forEach(p => {
-        if (p.libro_id) pagosMap[p.libro_id] = (pagosMap[p.libro_id] ?? 0) + 1;
+      const reservadoMap: Record<string, number> = {};
+      (pedidos as { libro_id: string }[] ?? []).forEach(p => {
+        if (p.libro_id) reservadoMap[p.libro_id] = (reservadoMap[p.libro_id] ?? 0) + 1;
       });
 
       const librosConStock = (libs as Libro[] ?? [])
         .map(l => ({
           ...l,
-          disponible: (stockMap[l.id] ?? 0) - (pagosMap[l.id] ?? 0),
+          disponible: (stockMap[l.id] ?? 0) - (reservadoMap[l.id] ?? 0),
         }))
         .filter(l => l.disponible > 0);
 
@@ -121,14 +119,6 @@ export default function HomePage() {
             ))}
           </div>
         )}
-
-        {/* Aviso preventa */}
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 mb-5 flex gap-3 items-start">
-          <span className="text-amber-500 text-lg shrink-0">ℹ️</span>
-          <p className="text-xs text-zinc-700 font-bold leading-relaxed">
-            <span className="font-black text-zinc-900">Sistema de preventa.</span> La venta está habilitada solo para los libros que aún tienen stock. Los demás ya no aparecen en la tienda.
-          </p>
-        </div>
 
         {/* Grid de libros */}
         {librosFiltrados.length === 0 ? (
